@@ -1,6 +1,5 @@
 #include "VAO.h"
 
-#include <iostream>
 
 
 VAO::VAO(GLuint id)

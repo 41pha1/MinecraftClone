@@ -1,5 +1,7 @@
+#include "Game.h"
 #include "Block.h"
 
+#include "Game.h"
 #include "Game.h"
 
 float ** Block::vertices;

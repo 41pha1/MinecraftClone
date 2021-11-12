@@ -30,6 +30,8 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 
 #include "lodepng.h"
 
+#include <stddef.h>
+
 #ifdef LODEPNG_COMPILE_DISK
 #include <limits.h> /* LONG_MAX */
 #include <stdio.h> /* file handling */
@@ -2545,7 +2547,7 @@ const unsigned char* lodepng_chunk_next_const(const unsigned char* chunk, const 
   }
 }
 
-unsigned char* lodepng_chunk_find(unsigned char* chunk, unsigned char* end, const char type[5]) {
+unsigned char* lodepng_chunk_find(unsigned char* chunk, unsigned char* end, const char type[5]) { // @suppress("No return")
   for(;;) {
     if(chunk >= end || end - chunk < 12) return 0; /* past file end: chunk + 12 > end */
     if(lodepng_chunk_type_equals(chunk, type)) return chunk;
@@ -2553,7 +2555,7 @@ unsigned char* lodepng_chunk_find(unsigned char* chunk, unsigned char* end, cons
   }
 }
 
-const unsigned char* lodepng_chunk_find_const(const unsigned char* chunk, const unsigned char* end, const char type[5]) {
+const unsigned char* lodepng_chunk_find_const(const unsigned char* chunk, const unsigned char* end, const char type[5]) { // @suppress("No return")
   for(;;) {
     if(chunk >= end || end - chunk < 12) return 0; /* past file end: chunk + 12 > end */
     if(lodepng_chunk_type_equals(chunk, type)) return chunk;

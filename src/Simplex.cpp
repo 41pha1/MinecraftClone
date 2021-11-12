@@ -27,7 +27,6 @@
 #include "Simplex.h"
 
 #include <cstdint>  // int32_t/uint8_t
-#include <iostream>
 #include <iterator>
 #include <random>
 #include <vector>

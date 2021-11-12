@@ -5,7 +5,6 @@
 #include <glm/trigonometric.hpp>
 #include <SDL_keycode.h>
 #include <cmath>
-#include <iostream>
 
 #include "Block.h"
 #include "Camera.h"

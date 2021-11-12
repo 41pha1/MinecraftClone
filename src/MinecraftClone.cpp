@@ -16,9 +16,7 @@
 #include "Input.h"
 #include "MasterRenderer.h"
 #include "Mouse.h"
-#include "OctreeElement.h"
-
-class Mouse;
+#include "Octree.h"
 
 SDL_Window *window;
 MasterRenderer *renderer;
@@ -41,47 +39,29 @@ void next_frame (double dt)
 //TODO std::array, chunk remeshing
 int main(int argc, char* argv[])
 {
-	for(int j = 0; j < 100; j++)
-	{
-		OctreeElement tree = OctreeElement(OctreeElement::NODE);
-		for(int x = 0; x < 32; x++)
-			for(int y = 0; y < 32; y++)
-				for(int z = 0; z < 32; z++)
-					tree.put(x, y, z, 0, 16, 17);
+	int size = 64;
+	Octree tree = Octree(size);
 
-
-		for(int x = 0; x < 32; x++)
-			for(int y = 0; y < 32; y++)
-				for(int z = 0; z < 32; z++)
-				{
-					OctreeResult res = tree.get(x, y, z, 0, 16);
-					//std::cout << (int)res.id << ", " << (int)res.depth << std::endl;
-				}
-
-		int size = 0;
-		size+= sizeof(tree);
-		for(auto elem : tree.children)
-		{
-			size+= sizeof(*(elem));
-			for(auto elem2 : elem->children)
+	for(int x = 0; x < size; x++)
+		for(int y = 0; y < size; y++)
+			for(int z = 0; z < size; z++)
 			{
-				size+= sizeof(*(elem2));
-				for(auto elem3 : elem2->children)
-				{
-					size+= sizeof(*(elem3));
-					for(auto elem4 : elem3->children)
-					{
-						size+= sizeof(*(elem4));
-						for(auto elem5 : elem4->children)
-						{
-							size+= sizeof(*(elem5));
-						}
-					}
-				}
+				tree.set(x,y,z,x+y+z);
 			}
-		}
-		std::cout << j << ", " << size << std::endl;
-	}
+
+	for(int x = 0; x < size; x++)
+		for(int y = 0; y < size; y++)
+			for(int z = 0; z < size; z++)
+			{
+				tree.set(x,y,z,15);
+			}
+
+
+	tree.print();
+
+	std::cout << "size: " << tree.tree->size() << std::endl;
+
+
 
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow("Minecraft Clone", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);

@@ -20,6 +20,7 @@ Camera::Camera(float FOV, int width, int height, float NEAR_, float FAR_)
 	roll = 0;
 	View = glm::lookAt(pos, glm::vec3(0,0,0), glm::vec3(0,1,0));
 	Projection = glm::perspective(glm::radians(FOV),  width / (float) height, NEAR_, FAR_);
+	blockInReach = false;
 }
 
 float mod(float value, int modulus)

@@ -1,8 +1,7 @@
 #ifndef OCTREEELEMENT_H_
 #define OCTREEELEMENT_H_
 
-#include <array>
-#include <memory>
+#include <string>
 
 struct OctreeResult
 {
@@ -10,18 +9,19 @@ struct OctreeResult
 	char depth;
 };
 
-class OctreeElement;
-
 class OctreeElement {
 public:
 	static const char NODE = -1;
 
-	char id = -1;
-
-	OctreeElement(char type_);
-	OctreeResult get(char x, char y, char z, char depth, char size);
-	void put(char x, char y, char z, char depth, char size, char id);
-	std::array<std::shared_ptr<OctreeElement>, 8> children;
+	virtual OctreeResult get(char x, char y, char z, char depth, char size);
+	virtual bool put(char x, char y, char z, char depth, char size, char id);
+	virtual bool canCollapse();
+	virtual bool isLeaf();
+	virtual int size();
+	virtual char getID();
+	virtual char getChildID();
+	virtual std::string getInfo(std::string padding, int firstDepth);
+	virtual ~OctreeElement();
 };
 
 #endif /* OCTREEELEMENT_H_ */

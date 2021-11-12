@@ -1,14 +1,9 @@
 #include "ChunkRenderer.h"
 
 #include <glad/glad.h>
-#include <glm/detail/type_mat4x4.hpp>
-#include <glm/ext/matrix_float4x4.hpp>
-#include <iostream>
 
-#include "BlockShader.h"
-#include "Camera.h"
 #include "Chunk.h"
-#include "ImageLoader.h"
+#include "ShaderProgram.h"
 #include "VAO.h"
 
 void ChunkRenderer :: render(ShaderProgram *shader, Chunk * chunk, Camera * cam)

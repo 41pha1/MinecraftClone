@@ -1,8 +1,12 @@
 #include "Player.h"
 
 #include <cmath>
-
-#include <glm/detail/type_vec3.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/geometric.hpp>
+#include <glm/trigonometric.hpp>
+#include "glm/glm.hpp"
+#include "glm/ext.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 #include "Block.h"
 #include "Game.h"
 

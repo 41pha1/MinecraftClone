@@ -1,8 +1,15 @@
 #include "MasterRenderer.h"
 
 #include <glad/glad.h>
+#include <glm/detail/type_mat4x4.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/geometric.hpp>
+#include <glm/trigonometric.hpp>
+#include "glm/glm.hpp"
+#include "glm/ext.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
-#include <glm/detail/type_vec3.hpp>
 #include "BlockShader.h"
 #include "BoundingBoxRenderer.h"
 #include "Camera.h"
