@@ -18,6 +18,6 @@ void main()
   vec3 lightDir = normalize(vec3(0.5, 1, 0.7));
   float diffuse = (0.5+ max(0., dot(normal, lightDir)))/1.5;
   color = texCol.rgb * diffuse;
-  float fogLinear =  min(1.0, length(position-camPos) / viewDistance);
+  float fogLinear =  min(1.0, length(position-camPos) / (viewDistance));
   color = mix (color, skyColor, exp(5. * (fogLinear - 1)));
 }

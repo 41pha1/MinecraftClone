@@ -15,7 +15,7 @@ class Player;
 class Game
 {
 public:
-	static const int RENDER_DISTANCE = 5;
+	static const int RENDER_DISTANCE = 10, WORLD_HEIGHT = 6;
 
 	std::map<int, std::map<int, std::map<int, Chunk*>>> chunks = {};
 	std::vector<Chunk*> renderQueue = {};

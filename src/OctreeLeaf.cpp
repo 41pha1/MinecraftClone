@@ -1,26 +1,64 @@
 #include "OctreeLeaf.h"
 
-#include <string>
+#include <algorithm>
 
 OctreeResult OctreeLeaf::get(char x, char y, char z, char depth, char size)
 {
-	return {id, depth};
+	char childID = 0;
+	if(x >= size)
+	{
+		x-=size;
+		childID += 4;
+	}
+	if(y >= size)
+	{
+		y-=size;
+		childID += 2;
+	}
+	if(z >= size)
+	{
+		z-=size;
+		childID += 1;
+	}
+
+	return {ids[childID], depth};
 }
 
 bool OctreeLeaf::put(char x, char y, char z, char depth, char size,
 		char id_)
 {
-	if(id == id_)
+	char childID = 0;
+	if(x >= size)
+	{
+		x-=size;
+		childID += 4;
+	}
+	if(y >= size)
+	{
+		y-=size;
+		childID += 2;
+	}
+	if(z >= size)
+	{
+		z-=size;
+		childID += 1;
+	}
+
+	if(ids[childID] == id_)
 		return false;
 
-	id = id_;
+	ids[childID] = id_;
 
 	return true;
 }
 
 bool OctreeLeaf::canCollapse()
 {
-	return false;
+	char content = ids[0];
+	for(int i = 1; i < 8; i++)
+		if(ids[i] != content)
+			return false;
+	return true;
 }
 
 int OctreeLeaf::size()
@@ -31,20 +69,27 @@ int OctreeLeaf::size()
 std::string OctreeLeaf::getInfo(std::string padding, int firstDepth)
 {
 	std::string info = "";
-	std::string alternatePadding = "";
-	for(int i = 0; i < firstDepth; i++)
-		alternatePadding += "--";
 
-	padding = padding.substr(0, padding.size()-2*firstDepth) +  alternatePadding;
-	info += padding  +  "-> " + std::to_string(int(id)) + "\n";
+	for(int i = 0; i < 8; i++)
+	{
+		int fd = (i == 0 ? firstDepth + 1 : 0);
+		std::string pd = (i == 7 ? padding + "  " : padding + " |");
+		std::string alternatePadding = "";
+		for(int j = 0; j < fd; j++)
+			alternatePadding += "--";
 
-	return info;
+		pd = pd.substr(0, pd.size()-2*fd) +  alternatePadding;
+		info += pd  +  "-> " + std::to_string(ids[i]) + "\n";
+	}
+
+	return info +  padding +"\n";
 }
 
 
 OctreeLeaf::OctreeLeaf(char type_)
 {
-	id = type_;
+	ids = std::array<char, 8>();
+	ids.fill(type_);
 }
 
 bool OctreeLeaf::isLeaf()
@@ -52,9 +97,9 @@ bool OctreeLeaf::isLeaf()
 	return true;
 }
 
-char OctreeLeaf::getID()
+OctreeLeaf::OctreeLeaf(std::array<char, 8> ids_)
 {
-	return id;
+	ids = ids_;
 }
 
 OctreeLeaf::~OctreeLeaf()
@@ -62,3 +107,7 @@ OctreeLeaf::~OctreeLeaf()
 
 }
 
+std::array<char, 8> OctreeLeaf::getIDs()
+{
+	return ids;
+}

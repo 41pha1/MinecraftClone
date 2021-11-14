@@ -10,6 +10,7 @@ public:
 
 	char get(char x, char y, char z);
 	void set(char x, char y, char z, char id);
+	void set(char *** elements);
 
 	void print();
 

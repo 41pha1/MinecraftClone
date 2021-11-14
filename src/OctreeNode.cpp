@@ -2,6 +2,28 @@
 #include "OctreeLeaf.h"
 
 
+char OctreeNode::getChildID(char x, char y, char z, char size)
+{
+	int childID = 0;
+
+	if(x >= size)
+	{
+		x-=size;
+		childID += 4;
+	}
+	if(y >= size)
+	{
+		y-=size;
+		childID += 2;
+	}
+	if(z >= size)
+	{
+		z-=size;
+		childID += 1;
+	}
+	return childID;
+}
+
 OctreeResult OctreeNode::get(char x, char y, char z, char depth, char size)
 {
 	int childID = 0;
@@ -21,7 +43,6 @@ OctreeResult OctreeNode::get(char x, char y, char z, char depth, char size)
 		z-=size;
 		childID += 1;
 	}
-
 	return children[childID]->get(x, y, z, depth+1, size>>1);
 }
 
@@ -48,12 +69,12 @@ bool OctreeNode::put(char x, char y, char z, char depth, char size,
 
 	auto child = children[childID];
 
-	if(child->isLeaf() && child->getID() == id_)
+	if(child->isLeaf() && child->get(x,y,z,depth+1,size >> 1).id == id_)
 		return false;
 
-	if(size >> 1 != 0 && child->isLeaf())
+	if(size >> 1 != 1 && child->isLeaf())
 	{
-		children[childID] = std::shared_ptr<OctreeElement>(new OctreeNode(0));
+		children[childID] = std::shared_ptr<OctreeElement>(new OctreeNode(child->getIDs()));
 		children[childID]->put(x, y, z, depth+1, size >> 1, id_);
 		return false;
 	}
@@ -62,9 +83,9 @@ bool OctreeNode::put(char x, char y, char z, char depth, char size,
 	{
 		if(!child->isLeaf())
 		{
-			char id = child->getChildID();
+			std::array<char,8> ids = child->getChildsContent();
 			children[childID].reset();
-			children[childID] = std::shared_ptr<OctreeElement>(new OctreeLeaf(id));
+			children[childID] = std::shared_ptr<OctreeElement>(new OctreeLeaf(ids));
 		}
 		return canCollapse();
 	}
@@ -73,13 +94,8 @@ bool OctreeNode::put(char x, char y, char z, char depth, char size,
 
 bool OctreeNode::canCollapse()
 {
-	char content = children[0]->getID();
-
-	if(content == NODE)
-		return false;
-
-	for(int i = 1; i < 8; i++)
-		if(children[i]->getID() != content)
+	for(int i = 0; i < 8; i++)
+		if(!(children[i]->isLeaf() && children[i]->canCollapse()))
 			return false;
 
 	return true;
@@ -111,9 +127,13 @@ std::string OctreeNode::getInfo(std::string padding, int firstDepth)
 OctreeNode::OctreeNode(char type)
 {
 	for(int i = 0; i < 8; i++)
-	{
-		children[i] =  std::shared_ptr<OctreeElement>(new OctreeLeaf(0));
-	}
+		children[i] =  std::shared_ptr<OctreeElement>(new OctreeLeaf(type));
+}
+
+OctreeNode::OctreeNode(std::array<char,8> types)
+{
+	for(int i = 0; i < 8; i++)
+		children[i] =  std::shared_ptr<OctreeElement>(new OctreeLeaf(types[i]));
 }
 
 bool OctreeNode::isLeaf()
@@ -121,14 +141,12 @@ bool OctreeNode::isLeaf()
 	return false;
 }
 
-char OctreeNode::getID()
+std::array<char,8> OctreeNode::getChildsContent()
 {
-	return NODE;
-}
-
-char OctreeNode::getChildID()
-{
-	return children[0]->getID();
+	std::array<char, 8> ids;
+	for(int i = 0; i < 8; i++)
+		ids[i] = children[i]->getIDs()[0];
+	return ids;
 }
 
 OctreeNode::~OctreeNode()

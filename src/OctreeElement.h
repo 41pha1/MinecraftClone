@@ -1,6 +1,7 @@
 #ifndef OCTREEELEMENT_H_
 #define OCTREEELEMENT_H_
 
+#include <array>
 #include <string>
 
 struct OctreeResult
@@ -18,8 +19,8 @@ public:
 	virtual bool canCollapse();
 	virtual bool isLeaf();
 	virtual int size();
-	virtual char getID();
-	virtual char getChildID();
+	virtual std::array<char,8> getIDs();
+	virtual std::array<char,8> getChildsContent();
 	virtual std::string getInfo(std::string padding, int firstDepth);
 	virtual ~OctreeElement();
 };

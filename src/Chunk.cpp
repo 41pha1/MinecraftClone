@@ -13,6 +13,8 @@
 #include "VAOLoader.h"
 #include "WorldGenerator.h"
 
+#include <iostream>
+
 class ImageLoader;
 
 Chunk::Chunk(Game * game_, int SEED, int cx_, int cy_, int cz_)
@@ -23,15 +25,16 @@ Chunk::Chunk(Game * game_, int SEED, int cx_, int cy_, int cz_)
 	game = game_;
 	valid = true;
 
-	blocks = new char**[SIZE];
-	for(int x = 0; x < SIZE; x++)
-	{
-		blocks[x] = new char*[SIZE];
-		for(int y = 0; y < SIZE; y++)
-		{
-			blocks[x][y] = new char[SIZE];
-		}
-	}
+//	blocks = new char**[SIZE];
+//	for(int x = 0; x < SIZE; x++)
+//	{
+//		blocks[x] = new char*[SIZE];
+//		for(int y = 0; y < SIZE; y++)
+//		{
+//			blocks[x][y] = new char[SIZE];
+//		}
+//	}
+	blocks = new Octree(SIZE);
 	game->generator->generateTerrain(this);
 	game->generator->populateTerrain(this);
 	model = glm::mat4(1.0f);
@@ -40,7 +43,13 @@ Chunk::Chunk(Game * game_, int SEED, int cx_, int cy_, int cz_)
 
 Chunk::Chunk(Game * game_, char*** blocks_, int cx_, int cy_, int cz_)
 {
-	blocks = blocks_;
+	blocks = new Octree(SIZE);
+
+	for(int x = 0; x < SIZE; x++)
+		for(int y = 0; y < SIZE; y++)
+			for(int z = 0; z < SIZE; z++)
+				blocks->set(x,y,z, blocks_[x][y][z]);
+
 	cx = cx_;
 	cy = cy_;
 	cz = cz_;
@@ -55,7 +64,8 @@ void Chunk::setBlock(int x, int y, int z, int id)
 	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE)
 			return game->setBlock(cx * SIZE + x, cy * SIZE + y, cz * SIZE + z, id);
 
-	blocks[x][y][z] = id;
+//	blocks[x][y][z] = id;
+	blocks->set(x,y,z,id);
 }
 
 char Chunk::getBlock(int x, int y, int z)
@@ -63,7 +73,8 @@ char Chunk::getBlock(int x, int y, int z)
 	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE)
 			return game->getBlock(cx * SIZE + x, cy * SIZE + y, cz * SIZE + z);
 
-		return blocks[x][y][z];
+//		return blocks[x][y][z];
+	return blocks->get(x,y,z);
 }
 
 bool Chunk::visibleOnSide(char id, int x, int y, int z)
@@ -105,7 +116,7 @@ void Chunk::generateMesh()
 		for(int y = 0; y < SIZE; y++)
 			for(int z = 0; z < SIZE; z++)
 			{
-				char block = blocks[x][y][z];
+				char block = getBlock(x,y,z);
 
 				if(!Block::isRenderable(block))
 					visibilities[i] = 0;
@@ -132,7 +143,7 @@ void Chunk::generateMesh()
 				int visibility = visibilities[i++];
 				if(!visibility)
 					continue;
-				char block = blocks[x][y][z];
+				char block = getBlock(x,y,z);
 
 				int vertCount = Block::getVertexCount(block, visibility);
 				int uvCount = (vertCount*2)/3;
@@ -192,18 +203,20 @@ void Chunk::generateMesh()
 
 Chunk::~Chunk()
 {
-	for(int x = 0; x < SIZE; x++)
-		for(int y = 0; y < SIZE; y++)
-			delete[] blocks[x][y];
-
-	for(int x = 0; x < SIZE; x++)
-		delete[] blocks[x];
-
-	delete[] blocks;
+//	for(int x = 0; x < SIZE; x++)
+//		for(int y = 0; y < SIZE; y++)
+//			delete[] blocks[x][y];
+//
+//	for(int x = 0; x < SIZE; x++)
+//		delete[] blocks[x];
+//
+//	delete[] blocks;
+	delete blocks;
 }
 
 Chunk::Chunk()
 {
+	blocks = new Octree(SIZE);
 	valid = false;
 	cx = 0;
 	cy = 0;

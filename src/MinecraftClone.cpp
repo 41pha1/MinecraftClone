@@ -15,8 +15,8 @@
 #include "ImageLoader.h"
 #include "Input.h"
 #include "MasterRenderer.h"
+#include "MinecraftWorldLoader.h"
 #include "Mouse.h"
-#include "Octree.h"
 
 SDL_Window *window;
 MasterRenderer *renderer;
@@ -36,33 +36,28 @@ void next_frame (double dt)
     renderer->render(game);
 	SDL_GL_SwapWindow(window);
 }
-//TODO std::array, chunk remeshing
+//TODO chunk remeshing, Octree populate, batch chunk rendering
 int main(int argc, char* argv[])
 {
-	int size = 64;
-	Octree tree = Octree(size);
-
-	for(int x = 0; x < size; x++)
-		for(int y = 0; y < size; y++)
-			for(int z = 0; z < size; z++)
-			{
-				tree.set(x,y,z,x+y+z);
-			}
-
-	for(int x = 0; x < size; x++)
-		for(int y = 0; y < size; y++)
-			for(int z = 0; z < size; z++)
-			{
-				tree.set(x,y,z,15);
-			}
-
-
-	tree.print();
-
-	std::cout << "size: " << tree.tree->size() << std::endl;
-
-
-
+	MinecraftWorldLoader::loadRegion("res/maps/Celestial Castle/region/r.0.0.mca");
+//	int size = 8;
+//
+//	Octree *  tree = new Octree(size);
+//
+//	for(int x = 0; x < size; x++)
+//	{
+//		for(int y = 0; y < size; y++)
+//		{
+//			for(int z = 0; z < size; z++)
+//			{
+//				tree->set(x,y,z,x*2+y*1+z);
+//			}
+//		}
+//	}
+//	tree->print();
+//
+//	std::cout << tree->tree->size() << std::endl;
+/*
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow("Minecraft Clone", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 
@@ -155,6 +150,6 @@ int main(int argc, char* argv[])
 
     SDL_DestroyWindow(window);
     SDL_Quit();
-
+    */
     return 0;
 }

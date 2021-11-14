@@ -76,16 +76,16 @@ void WorldGenerator::populateTerrain(Chunk * chunk)
 				if(chunk->getBlock(x, y-1, z) == Block::GRASS_BLOCK && chunk->getBlock(x, y, z) == Block::AIR )
 				{
 					if(rand() < 10000 - (wy * 100.))
-						chunk->blocks[x][y][z] = Block::GRASS;
+						chunk->setBlock(x,y,z,Block::GRASS);
 
 					if(rand() < 300)
-						chunk->blocks[x][y][z] = Block::RED_FLOWER;
+						chunk->setBlock(x,y,z,Block::RED_FLOWER);
 
 					if(rand() < 300)
-						chunk->blocks[x][y][z] = Block::YELLOW_FLOWER;
+						chunk->setBlock(x,y,z,Block::YELLOW_FLOWER);
 
 					if(rand() < 300)
-						chunk->blocks[x][y][z] = Block::FERN;
+						chunk->setBlock(x,y,z,Block::FERN);
 
 					if(rand() < 300)
 						generateTree(chunk, x,y,z, 0);
@@ -160,6 +160,15 @@ void WorldGenerator::generateTerrain(Chunk * chunk)
 	if(!doesHeightMapExist(chunk->cx, chunk->cz))
 		generareHeightMap(chunk->cx, chunk->cz);
 
+	char *** blocks = new char**[size];
+	for(int x = 0; x < size; x++)
+	{
+		blocks[x] = new char*[size];
+		for(int y = 0; y < size; y++)
+		{
+			blocks[x][y] = new char[size];
+		}
+	}
 
 	for(int x = 0; x < size; x++)
 	{
@@ -174,38 +183,37 @@ void WorldGenerator::generateTerrain(Chunk * chunk)
 
 			for(int y = 0; y < size; y++)
 			{
-
-				chunk->blocks[x][y][z] = Block::AIR;
+				blocks[x][y][z] = Block::AIR;
 				blockcount++;
 
-				int wy = y + chunk->cy * Chunk::SIZE;
+				int wy = y + chunk->cy * size;
 
 				if(wy < terrainHeight + snowHeight)
-					chunk->blocks[x][y][z] = Block::SNOW_BLOCK;
+					blocks[x][y][z] = Block::SNOW_BLOCK;
 
 				if(wy < terrainHeight + iceHeight)
-					chunk->blocks[x][y][z] = Block::ICE;
-
+					blocks[x][y][z] = Block::ICE;
 				if(wy < (terrainHeight))
-					chunk->blocks[x][y][z] = Block::GRASS_BLOCK;
+					blocks[x][y][z] = Block::GRASS_BLOCK;
 
 				if(wy < (terrainHeight) && snowHeight > 0)
-					chunk->blocks[x][y][z] = Block::SNOW;
+					blocks[x][y][z] = Block::SNOW;
 
 				if(wy < (terrainHeight -1.))
-					chunk->blocks[x][y][z] = Block::DIRT;
+					blocks[x][y][z] = Block::DIRT;
 
 				if(wy < (terrainHeight - dirtHeight))
-					chunk->blocks[x][y][z] = Block::STONE;
+					blocks[x][y][z] = Block::STONE;
 
 				if(wy > terrainHeight && wy < SEA_LEVEL)
-					chunk->blocks[x][y][z] = Block::ICE;
+					blocks[x][y][z] = Block::ICE;
 
 				if(wy == 0)
-					chunk->blocks[x][y][z] = Block::BEDROCK;
+					blocks[x][y][z] = Block::BEDROCK;
 			}
 		}
 	}
+	chunk->blocks->set(blocks);
 }
 
 WorldGenerator::~WorldGenerator()

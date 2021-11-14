@@ -28,22 +28,23 @@ int OctreeElement::size()
 	return 0;
 }
 
-char OctreeElement::getID()
-{
-	return 0;
-}
 
 std::string OctreeElement::getInfo(std::string padding, int firstDepth)
 {
 	return "";
 }
 
-char OctreeElement::getChildID()
+std::array<char,8> OctreeElement::getChildsContent()
 {
-	return 0;
+	return {};
 }
 
 OctreeElement::~OctreeElement()
 {
 
+}
+
+std::array<char, 8> OctreeElement::getIDs()
+{
+	return {};
 }

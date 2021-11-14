@@ -28,7 +28,7 @@ Game::Game(Camera *  cam)
 	{
 		for(int z = -RENDER_DISTANCE; z < RENDER_DISTANCE; z++)
 		{
-			for(int y = 0; y < 3; y++)
+			for(int y = 0; y < WORLD_HEIGHT; y++)
 			{
 				chunks[x+px][y][z+pz] = loadChunk(x+px, y, z+pz);
 			}
@@ -70,7 +70,7 @@ char Game::getBlock(int x, int y, int z)
 		return invalidBlock;
 
 	glm::vec3 chunkCoords = toChunkCoords(x, y, z);
-	return chunk->blocks[(int)chunkCoords.x][(int)chunkCoords.y][(int)chunkCoords.z];
+	return chunk->getBlock((char)chunkCoords.x, (char)chunkCoords.y, (char)chunkCoords.z);
 }
 
 bool Game::isChunkLoaded(int cx, int cy, int cz)
@@ -179,7 +179,7 @@ void Game::loadChunks()
 	if(closest == INT_MAX)
 		return;
 
-	for(int y = 0; y <= 3; y++)
+	for(int y = 0; y <= WORLD_HEIGHT; y++)
 	{
 		chunkProvider->requestChunk(ccx, y, ccz);
 		chunks[ccx][y][ccz] = loadChunk(ccx, y, ccz);
@@ -271,7 +271,7 @@ void Game::setBlock(int x, int y, int z, int id)
 
 	glm::vec3 chunkCoords = toChunkCoords(x, y, z);
 
-	chunk->blocks[(int)chunkCoords.x][(int)chunkCoords.y][(int)chunkCoords.z] = id;
+	chunk->setBlock((char)chunkCoords.x, (char)chunkCoords.y, (char)chunkCoords.z, id);
 }
 
 void Game::placeBlock(int x, int y, int z, int id)

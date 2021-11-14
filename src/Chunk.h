@@ -6,18 +6,17 @@
 #include <vector>
 
 #include "Block.h"
-
-class VAO;
-
-class Game;
+#include "VAO.h"
+#include "Octree.h"
 
 class Chunk
 {
 public:
-	static const int SIZE = 64;
+	static const int SIZE = 16;
 	int cx, cy, cz;
 	bool valid;
-	char *** blocks = new char**[0];
+//	char *** blocks = new char**[0];
+	Octree * blocks;
 	Game * game;
 	VAO * vao = 0;
 	glm::mat4 model;
