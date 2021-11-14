@@ -9,7 +9,7 @@ NBTParser::NBTParser()
 
 }
 
-NBTData NBTParser::parseData(std::vector<char>& data)
+NBTData * NBTParser::parseData(std::vector<char>& data)
 {
 	return parseTag(data, 0).data;
 }
@@ -21,7 +21,7 @@ parseResult NBTParser::parseTag(std::vector<char>& data, int index)
 	if(tagType == NBTData::TAG_END)
 	{
 		std::cerr << "unexspected end tag" << std::endl;
-		return {index+1, NBTData(NBTData::TAG_END, 0, "")};
+		return {index+1, new NBTData(NBTData::TAG_END, 0, "")};
 	}
 
 	int nameLength = (int)(unsigned char)(data[index + 1]) << 8 | (unsigned char)(data[index + 2]);
@@ -52,43 +52,43 @@ parseResult NBTParser::parseTagPayload(std::vector<char> data, int index, char t
 		case NBTData::TAG_LONG_ARRAY: return parseTagLongArray(data, index, name);
 		default: std::cerr << "Unsupported NBT Tag of type " <<  int(tagID) << std::endl;
 	}
-	return {index+1, NBTData(NBTData::TAG_END, 0, "")};
+	return {index+1, new NBTData(NBTData::TAG_END, 0, "")};
 }
 
 parseResult NBTParser::parseTagByte(std::vector<char>& data, int index, std::string name)
 {
 	char * value = new char(data[index]);
-	return {index+1, NBTData(NBTData::TAG_BYTE, value, name)};
+	return {index+1, new NBTData(NBTData::TAG_BYTE, value, name)};
 }
 
 parseResult NBTParser::parseTagShort(std::vector<char>& data, int index, std::string name)
 {
 	short * value = new short(parseShort(data, index));
-	return  {index+2, NBTData(NBTData::TAG_SHORT, value, name)};
+	return  {index+2, new NBTData(NBTData::TAG_SHORT, value, name)};
 }
 
 parseResult NBTParser::parseTagInt(std::vector<char>& data, int index, std::string name)
 {
 	int * value = new int(parseInt(data, index));
-	return  {index+4, NBTData(NBTData::TAG_INT, value, name)};
+	return  {index+4, new NBTData(NBTData::TAG_INT, value, name)};
 }
 
 parseResult NBTParser::parseTagLong(std::vector<char>& data, int index, std::string name)
 {
 	long long * value = new (long long)(parseLong(data, index));
-	return  {index+8, NBTData(NBTData::TAG_LONG, value, name)};
+	return  {index+8, new NBTData(NBTData::TAG_LONG, value, name)};
 }
 
 parseResult NBTParser::parseTagFloat(std::vector<char>& data, int index, std::string name)
 {
 	float * value = new float(*((float*) (&data[index])));
-	return {index+4, NBTData(NBTData::TAG_FLOAT, value, name)};
+	return {index+4, new NBTData(NBTData::TAG_FLOAT, value, name)};
 }
 
 parseResult NBTParser::parseTagDouble(std::vector<char>& data, int index, std::string name)
 {
 	double * value = new double (*((double*) (&data[index])));
-	return {index+8, NBTData(NBTData::TAG_DOUBLE, value, name)};
+	return {index+8, new NBTData(NBTData::TAG_DOUBLE, value, name)};
 }
 
 parseResult NBTParser::parseTagString(std::vector<char>& data, int index, std::string name)
@@ -99,7 +99,7 @@ parseResult NBTParser::parseTagString(std::vector<char>& data, int index, std::s
 	for(int i = 0; i < stringLength; i++)
 		value->operator+=(data[index + 2 + i]);
 
-	return {index + 2 + stringLength, NBTData(NBTData::TAG_STRING, value, name)};
+	return {index + 2 + stringLength, new NBTData(NBTData::TAG_STRING, value, name)};
 }
 
 parseResult NBTParser::parseTagList(std::vector<char>& data, int index, std::string name)
@@ -108,7 +108,7 @@ parseResult NBTParser::parseTagList(std::vector<char>& data, int index, std::str
 	int size = parseInt(data, index+1);
 	index += 5;
 
-	std::vector<NBTData> * tagList = new std::vector<NBTData>;
+	std::vector<NBTData *> * tagList = new std::vector<NBTData *>;
 
 	for(int i = 0; i < size; i++)
 	{
@@ -117,12 +117,12 @@ parseResult NBTParser::parseTagList(std::vector<char>& data, int index, std::str
 		tagList->push_back(result.data);
 	}
 
-	return {index, NBTData(NBTData::TAG_LIST, tagList, name)};
+	return {index, new NBTData(NBTData::TAG_LIST, tagList, name)};
 }
 
 parseResult NBTParser::parseTagCompound(std::vector<char>& data, int index, std::string name)
 {
-	std::vector<NBTData> * compoundData = new std::vector<NBTData>;
+	std::vector<NBTData *> * compoundData = new std::vector<NBTData *>;
 
 	while(data[index] != NBTData::TAG_END)
 	{
@@ -131,7 +131,7 @@ parseResult NBTParser::parseTagCompound(std::vector<char>& data, int index, std:
 		compoundData->push_back(result.data);
 	}
 
-	return {index + 1, NBTData(NBTData::TAG_COMPOUND, compoundData, name)};
+	return {index + 1, new NBTData(NBTData::TAG_COMPOUND, compoundData, name)};
 }
 
 parseResult NBTParser::parseTagByteArray(std::vector<char>& data, int index, std::string name)
@@ -144,7 +144,7 @@ parseResult NBTParser::parseTagByteArray(std::vector<char>& data, int index, std
 		values->push_back(data[index+i+4]);
 	}
 
-	return {index + count + 4, NBTData(NBTData::TAG_BYTE_ARRAY, values, name)};
+	return {index + count + 4, new NBTData(NBTData::TAG_BYTE_ARRAY, values, name)};
 }
 
 
@@ -158,7 +158,7 @@ parseResult NBTParser::parseTagIntArray(std::vector<char>& data, int index, std:
 		values->push_back(parseInt(data, index+i*4+4));
 	}
 
-	return {index + 4 * count + 4, NBTData(NBTData::TAG_INT_ARRAY, values, name)};
+	return {index + 4 * count + 4, new NBTData(NBTData::TAG_INT_ARRAY, values, name)};
 }
 
 parseResult NBTParser::parseTagLongArray(std::vector<char>& data, int index, std::string name)
@@ -171,7 +171,7 @@ parseResult NBTParser::parseTagLongArray(std::vector<char>& data, int index, std
 		values->push_back(parseLong(data, index+i*8+4));
 	}
 
-	return {index + 8 * count + 4, NBTData(NBTData::TAG_LONG_ARRAY, values, name)};
+	return {index + 8 * count + 4, new NBTData(NBTData::TAG_LONG_ARRAY, values, name)};
 }
 
 short NBTParser::parseShort(std::vector<char>& data, int index)
@@ -186,8 +186,12 @@ int NBTParser::parseInt(std::vector<char>& data, int index)
 
 long long NBTParser::parseLong(std::vector<char>& data, int index)
 {
-	return (long long)((long long)((unsigned char)(data[index])) << 56 | (long long)((unsigned char)(data[index + 1])) << 48 | (long long)((unsigned char) (data[index+2])) << 40 | (long long)((unsigned char)(data[index + 3])) << 32 |
-			(unsigned char)(data[index+4]) << 24 | (unsigned char)(data[index + 5]) << 16| (unsigned char) (data[index+6]) << 8 | (unsigned char)(data[index + 7]));
+	long long value = 0;
+	for(int i = 0; i < 8; i ++)
+	{
+		value |= ((long long)((unsigned char)(data[index + 7 - i])) << (i * 8));
+	}
+	return value;
 }
 
 NBTParser::~NBTParser()

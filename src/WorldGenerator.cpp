@@ -79,10 +79,10 @@ void WorldGenerator::populateTerrain(Chunk * chunk)
 						chunk->setBlock(x,y,z,Block::GRASS);
 
 					if(rand() < 300)
-						chunk->setBlock(x,y,z,Block::RED_FLOWER);
+						chunk->setBlock(x,y,z,Block::POPPY);
 
 					if(rand() < 300)
-						chunk->setBlock(x,y,z,Block::YELLOW_FLOWER);
+						chunk->setBlock(x,y,z,Block::DANDELION);
 
 					if(rand() < 300)
 						chunk->setBlock(x,y,z,Block::FERN);
@@ -213,7 +213,8 @@ void WorldGenerator::generateTerrain(Chunk * chunk)
 			}
 		}
 	}
-	chunk->blocks->set(blocks);
+//	chunk->blocks->set(blocks);
+	chunk->blocks = blocks;
 }
 
 WorldGenerator::~WorldGenerator()

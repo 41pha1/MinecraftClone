@@ -9,13 +9,13 @@
 struct parseResult
 {
 	int offset;
-	NBTData data;
+	NBTData * data;
 };
 
 class NBTParser {
 public:
 	NBTParser();
-	static NBTData parseData(std::vector<char> &data);
+	static NBTData * parseData(std::vector<char> &data);
 	static parseResult parseTag(std::vector<char> &data, int index);
 	static parseResult parseTagPayload(std::vector<char> data, int index, char tagID, std::string name);
 	static parseResult parseTagByte(std::vector<char> &data, int index, std::string name);

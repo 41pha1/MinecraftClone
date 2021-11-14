@@ -25,7 +25,7 @@ Input *input;
 Mouse * mouse;
 std::map<int, bool> keyboard;
 
-const int width = 1000, height = 600;
+const int width = 1500, height = 900;
 const int FPS = 60;
 const int TPS = 20;
 
@@ -39,25 +39,6 @@ void next_frame (double dt)
 //TODO chunk remeshing, Octree populate, batch chunk rendering
 int main(int argc, char* argv[])
 {
-	MinecraftWorldLoader::loadRegion("res/maps/Celestial Castle/region/r.0.0.mca");
-//	int size = 8;
-//
-//	Octree *  tree = new Octree(size);
-//
-//	for(int x = 0; x < size; x++)
-//	{
-//		for(int y = 0; y < size; y++)
-//		{
-//			for(int z = 0; z < size; z++)
-//			{
-//				tree->set(x,y,z,x*2+y*1+z);
-//			}
-//		}
-//	}
-//	tree->print();
-//
-//	std::cout << tree->tree->size() << std::endl;
-/*
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow("Minecraft Clone", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 
@@ -73,13 +54,13 @@ int main(int argc, char* argv[])
     gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
 
     ImageLoader::loadTextures();
-    Block::generateMeshData();
+    Block::init();
     input = new Input();
     mouse = new Mouse();
     renderer = new MasterRenderer(width, height);
 
     int start = SDL_GetTicks();
-    game = new Game(renderer->camera);
+    game = new Game(renderer->camera, "res/maps/Celestial Castle");
     std::cout << SDL_GetTicks()-start << std::endl;
     SDL_Event event;
     int running = 1;
@@ -150,6 +131,6 @@ int main(int argc, char* argv[])
 
     SDL_DestroyWindow(window);
     SDL_Quit();
-    */
+
     return 0;
 }

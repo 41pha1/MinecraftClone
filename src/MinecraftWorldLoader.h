@@ -7,17 +7,21 @@
 
 #include "Chunk.h"
 
-class Chunk;
+class NBTData;
 
 class MinecraftWorldLoader
 {
 public:
 	Game * game;
+	std::map<int, std::map<int, std::vector<char>*>> regionFiles;
+
 	MinecraftWorldLoader(Game * game);
-	static void loadWorld(std::string fileLocation);
-	static void loadRegion(std::string regionFileLocation);
-	static std::array<Chunk*, 16> loadChunk(std::vector<char> &bytes, long index);
-	static std::vector<char> inflateZlib(std::vector<char> &bytes);
+	void loadWorld(std::string fileLocation);
+	void loadRegion(std::string regionFileLocation);
+	std::array<Chunk*, Chunk::HEIGHT> loadChunk(std::vector<char> &bytes, long index);
+	std::array<Chunk*, Chunk::HEIGHT> loadChunk(int cx, int cz, std::string worldFolder);
+	char *** loadSection(NBTData * section);
+	std::vector<char> inflateZlib(std::vector<char> &bytes);
 	virtual ~MinecraftWorldLoader();
 };
 

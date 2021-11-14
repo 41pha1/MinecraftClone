@@ -3,24 +3,30 @@
 #include <glm/detail/type_vec3.hpp>
 #include <windef.h>
 #include <winnt.h>
+#include <array>
 #include <climits>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
 
 #include "Block.h"
-#include "Camera.h"
 #include "Player.h"
-#include "WorldGenerator.h"
 
-Game::Game(Camera *  cam)
+Game::Game(Camera *  cam, std::string worldFolder_)
 {
 	cam->game = this;
 	generator = new WorldGenerator(1234L);
 	player = new Player(this);
 	chunks = std::map<int, std::map<int, std::map<int, Chunk *>>>();
+	wLoader = new MinecraftWorldLoader(this);
 
-	std::cout << "generating spawn area..." << std::endl;
+	if(worldFolder_ != "")
+	{
+		worldFolder = worldFolder_;
+		loadWorld = true;
+	}
+
+	std::cout << "preparing spawn area..." << std::endl;
 
 	int px = player->pos.x  / Chunk::SIZE;
 	int pz = player->pos.z  / Chunk::SIZE;
@@ -28,33 +34,48 @@ Game::Game(Camera *  cam)
 	{
 		for(int z = -RENDER_DISTANCE; z < RENDER_DISTANCE; z++)
 		{
-			for(int y = 0; y < WORLD_HEIGHT; y++)
+			auto chunk = loadChunk(x+px, z+pz);
+			for(int y = 0; y < Chunk::HEIGHT; y++)
 			{
-				chunks[x+px][y][z+pz] = loadChunk(x+px, y, z+pz);
+				chunks[x+px][y][z+pz] = chunk[y];
 			}
 		}
 	}
 
-	std::cout << "meshing generated chunks..." << std::endl;
+	std::cout << "meshing chunks..." << std::endl;
 	for(auto x : chunks)
 	{
 		for(auto y : x.second)
 		{
 			for(auto z : y.second)
 			{
-				z.second->generateMesh();
-				renderQueue.push_back(z.second);
+				if(z.second->blocks != 0)
+				{
+					z.second->generateMesh();
+					renderQueue.push_back(z.second);
+				}
 			}
 		}
 	}
+	std::cout << "Done!" << std::endl;
 	player->setOnGround();
 	camera = cam;
 	chunkProvider = new ChunkProvider();
 }
 
-Chunk* Game::loadChunk(int cx, int cy, int cz)
+std::array<Chunk *, Chunk::HEIGHT> Game::loadChunk(int cx, int cz)
 {
-	Chunk * chunk = new Chunk(this, 0, cx, cy ,cz);
+	if(loadWorld)
+	{
+		std::cout << "Loading chunk " << cx << ", " << cz << " from disk." << std::endl;
+		std::array<Chunk *, Chunk::HEIGHT> chunk =  wLoader->loadChunk(cx, cz, worldFolder);
+		return chunk;
+	}
+	std::array<Chunk *, Chunk::HEIGHT> chunk;
+	for(int i = 0; i < Chunk::HEIGHT; i++)
+	{
+		chunk[i] =  new Chunk(this, 0, cx, i ,cz, true);
+	}
 	return chunk;
 }
 
@@ -115,7 +136,7 @@ void Game::updateRenderQueue()
 				int cy = pcy + dy;
 				int cz = pcz + dz;
 
-				if(isChunkLoaded(cx, cy, cz))
+				if(isChunkLoaded(cx, cy, cz) && getChunk(cx, cy, cz)->blocks != 0)
 				{
 					renderQueue.push_back(getChunk(cx, cy, cz));
 				}
@@ -179,10 +200,11 @@ void Game::loadChunks()
 	if(closest == INT_MAX)
 		return;
 
-	for(int y = 0; y <= WORLD_HEIGHT; y++)
+	auto chunk = loadChunk(ccx, ccz);
+	for(int y = 0; y <= Chunk::HEIGHT; y++)
 	{
 		chunkProvider->requestChunk(ccx, y, ccz);
-		chunks[ccx][y][ccz] = loadChunk(ccx, y, ccz);
+		chunks[ccx][y][ccz] = chunk[y];
 
 		chunksToRemesh[ccx][y][ccz] = true;
 		chunksToRemesh[ccx-1][y][ccz] = true;
@@ -224,13 +246,13 @@ void Game::update(float dt)
 {
 	camera->update(player);
 	player->move();
-	chunkProvider->update();
+//	chunkProvider->update();
 
 //    HANDLE hThread = CreateThread(NULL,0,threadFunction,this,0,NULL);
 //    WaitForSingleObject(hThread, INFINITE);
 //    CloseHandle(hThread);
 
-	loadChunks();
+//	loadChunks();
 	updateRenderQueue();
 }
 

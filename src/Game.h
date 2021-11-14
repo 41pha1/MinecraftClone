@@ -3,38 +3,41 @@
 
 #include <glm/ext/vector_float3.hpp>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "Chunk.h"
+#include "MinecraftWorldLoader.h"
 #include "ChunkProvider.h"
-
-class WorldGenerator;
-class Camera;
-class Player;
+#include "WorldGenerator.h"
+#include "Camera.h"
 
 class Game
 {
 public:
-	static const int RENDER_DISTANCE = 10, WORLD_HEIGHT = 6;
+	static const int RENDER_DISTANCE = 10;
 
 	std::map<int, std::map<int, std::map<int, Chunk*>>> chunks = {};
 	std::vector<Chunk*> renderQueue = {};
 	std::vector<glm::vec3> updateQueue;
+	std::string worldFolder;
+	bool loadWorld = false;
 	Camera * camera;
 	Player * player;
 	WorldGenerator * generator;
+	MinecraftWorldLoader * wLoader;
 	ChunkProvider * chunkProvider;
 	int gametick = 0;
 
 	Chunk * invalidChunk = new Chunk();
 	char invalidBlock = -1;
 
-	Game(Camera *);
+	Game(Camera *, std::string worldFolder = "");
 	virtual ~Game();
 	void update(float dt);
 	void tick();
 
-	Chunk * loadChunk(int cx, int cy, int cz);
+	std::array<Chunk *, Chunk::HEIGHT> loadChunk(int cx, int cz);
 	glm::vec3 toChunkCoords(int x, int y, int z);
 	void loadChunks();
 	bool isChunkLoaded(int cx, int cy, int cz);

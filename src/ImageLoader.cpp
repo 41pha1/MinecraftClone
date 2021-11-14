@@ -13,8 +13,11 @@ GLuint ImageLoader::atlas;
 std::string blockTextures[] = {"grass_block_side", "grass_block_top", "dirt", "cobblestone", "stone", "oak_planks", "bricks", "bedrock",
 		"sand", "gravel", "oak_log", "oak_log_top", "iron_block", "gold_block", "diamond_block", "tnt_side","tnt_top","tnt_bottom",
 		"snow", "grass_block_snow", "oak_leaves", "ice", "clay", "spruce_log", "spruce_log_top", "obsidian", "sponge", "glass", "gold_ore", "iron_ore",
-		"coal_ore", "diamond_ore", "redstone_ore",  "grass", "red_mushroom", "brown_mushroom", "red_tulip", "dandelion", "crafting_table_side",
-		"crafting_table_top", "crafting_table_front", "stone_bricks", "tall_grass_top", "tall_grass_bottom", "fern", "large_fern_top", "large_fern_bottom", "lapis_block"};
+		"coal_ore", "diamond_ore", "redstone_ore",  "grass", "red_mushroom", "brown_mushroom", "poppy", "dandelion", "crafting_table_side",
+		"crafting_table_top", "crafting_table_front", "stone_bricks", "tall_grass_top", "tall_grass_bottom", "fern", "large_fern_top", "large_fern_bottom", "lapis_block",
+		"andesite", "diorite", "granite", "lapis_ore", "melon_side", "melon_top", "coarse_dirt", "chiseled_quartz_block", "dark_prismarine",
+		"prismarine_bricks", "polished_diorite", "quartz_bricks", "sea_lantern", "cyan_concrete", "mossy_cobblestone", "cracked_stone_bricks", "quartz_pillar", "quartz_pillar_top",
+		"quartz_block_side", "quartz_block_bottom", "quartz_block_top"};
 
 void ImageLoader::loadTextures()
 {
@@ -36,7 +39,7 @@ void ImageLoader::generateTextureAtlas()
 		unsigned texWidth, texHeight;
 		unsigned error = lodepng::decode(data, texWidth, texHeight, "res/textures/block/" + blockTextures[i] + ".png");
 		if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
-		if(texRes != texWidth || texRes != texHeight)   std::cerr << "invalid texture resolution!" << std::endl;
+		if(texRes != texWidth || texRes != texHeight)   std::cerr << "invalid texture resolution: " << blockTextures[i] + ".png" << std::endl;
 
 		int rows = height/texRes;
 		int columns = width/texRes;
@@ -170,8 +173,8 @@ glm::vec2 ImageLoader::toAtlasCoords(float uvx, float uvy,  int id, int side)
 	case Block::GRASS:  texID = ImageLoader::GRASS; break;
 	case Block::RED_MUSHROOM:  texID = ImageLoader::RED_MUSHROOM; break;
 	case Block::BROWN_MUSHROOM:  texID = ImageLoader::BROWN_MUSHROOM; break;
-	case Block::RED_FLOWER:  texID = ImageLoader::RED_TULIP; break;
-	case Block::YELLOW_FLOWER:  texID = ImageLoader::DANDELION; break;
+	case Block::POPPY:  texID = ImageLoader::POPPY; break;
+	case Block::DANDELION:  texID = ImageLoader::DANDELION; break;
 	case Block::CRAFTING_BENCH:
 		if(side == Block::TOP)
 			texID = ImageLoader::CRAFTING_TABLE_TOP;
@@ -187,7 +190,40 @@ glm::vec2 ImageLoader::toAtlasCoords(float uvx, float uvy,  int id, int side)
 	case Block::FERN:  texID = ImageLoader::FERN; break;
 	case Block::LAPIS_LAZULI:  texID = ImageLoader::LAPIS_BLOCK; break;
 	case Block::ICE: texID = ImageLoader::ICE; break;
-
+	case Block::ANDESITE: texID = ImageLoader::ANDESITE; break;
+	case Block::GRANITE: texID = ImageLoader::GRANITE; break;
+	case Block::DIORITE: texID = ImageLoader::DIORITE; break;
+	case Block::LAPIS_ORE: texID = ImageLoader::LAPIS_ORE; break;
+	case Block::COARSE_DIRT: texID = ImageLoader::COARSE_DIRT; break;
+	case Block::MELON:
+		if(side == Block::TOP)
+			texID = ImageLoader::MELON_TOP;
+		else
+			texID = ImageLoader::MELON_SIDE;
+		break;
+	case Block::CHISELED_QUARTZ_BLOCK: texID = ImageLoader::CHISELED_QUARTZ_BLOCK; break;
+	case Block::DARK_PRISMARINE: texID = ImageLoader::DARK_PRISMARINE; break;
+	case Block::PRISMARINE_BRICKS: texID = ImageLoader::PRISMARINE_BRICKS; break;
+	case Block::POLISHED_DIORITE: texID = ImageLoader::POLISHED_DIORITE; break;
+	case Block::QUARTZ_BRICKS: texID = ImageLoader::QUARTZ_BRICKS; break;
+	case Block::SEA_LANTERN: texID = ImageLoader::SEA_LANTERN; break;
+	case Block::CYAN_CONCRETE: texID = ImageLoader::CYAN_CONCRETE; break;
+	case Block::MOSSY_COBBLESTONE: texID = ImageLoader::MOSSY_COBBLESTONE; break;
+	case Block::CRACKED_STONE_BRICKS: texID = ImageLoader::CRACKED_STONE_BRICKS; break;
+	case Block::QUARTZ_PILLAR:
+		if(side == Block::TOP || side == Block::BOTTOM)
+			texID = ImageLoader::QUARTZ_PILLAR_TOP;
+		else
+			texID = ImageLoader::QUARTZ_PILLAR;
+		break;
+	case Block::QUARTZ_BLOCK:
+		if(side == Block::TOP)
+			texID = ImageLoader::QUARTZ_BLOCK_TOP;
+		else if(side == Block::BOTTOM)
+			texID = ImageLoader::QUARTZ_BLOCK_BOTTOM;
+		else
+			texID = ImageLoader::QUARTZ_BLOCK_SIDE;
+		break;
 	}
 	int rows = height / texRes;
 	int columns = width / texRes;

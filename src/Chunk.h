@@ -12,17 +12,17 @@
 class Chunk
 {
 public:
-	static const int SIZE = 16;
+	static const int SIZE = 16, HEIGHT = 16;
 	int cx, cy, cz;
 	bool valid;
-//	char *** blocks = new char**[0];
-	Octree * blocks;
+	char *** blocks = new char**[0];
+//	Octree * blocks;
 	Game * game;
 	VAO * vao = 0;
 	glm::mat4 model;
 
 	Chunk();
-	Chunk(Game * game, int SEED, int cx, int cy, int cz);
+	Chunk(Game * game, int SEED, int cx, int cy, int cz, bool generate);
 	Chunk(Game * game, char *** blocks, int cx, int cy, int cz);
 	char getBlock(int x, int y, int z);
 	void setBlock(int x, int y, int z, int id);
