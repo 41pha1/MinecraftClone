@@ -66,7 +66,7 @@ void Input::update(std::map<int, bool> & keyboard, Mouse * mouse, Game * game)
 	else if(keyboard[SDLK_LCTRL])
 	{
 		if(game->player->FLYING)
-			movement *= 2.f;
+			movement *= 4.f;
 		else
 			movement *= 1.15;
 		if(!game->player->onGround && !game->player->FLYING)

@@ -1,6 +1,7 @@
 #include "Game.h"
 
 #include <glm/detail/type_vec3.hpp>
+#include <winbase.h>
 #include <windef.h>
 #include <winnt.h>
 #include <array>
@@ -30,14 +31,14 @@ Game::Game(Camera *  cam, std::string worldFolder_)
 
 	int px = player->pos.x  / Chunk::SIZE;
 	int pz = player->pos.z  / Chunk::SIZE;
-	for(int x = -RENDER_DISTANCE; x < RENDER_DISTANCE; x++)
+	for(int x = -1; x < 1; x++)
 	{
-		for(int z = -RENDER_DISTANCE; z < RENDER_DISTANCE; z++)
+		for(int z = -1; z < 1; z++)
 		{
 			auto chunk = loadChunk(x+px, z+pz);
 			for(int y = 0; y < Chunk::HEIGHT; y++)
 			{
-				chunks[x+px][y][z+pz] = chunk[y];
+				chunks.operator[](x+px)[y][z+pz] = (*chunk)[y];
 			}
 		}
 	}
@@ -52,6 +53,7 @@ Game::Game(Camera *  cam, std::string worldFolder_)
 				if(z.second->blocks != 0)
 				{
 					z.second->generateMesh();
+					z.second->loadToVao();
 					renderQueue.push_back(z.second);
 				}
 			}
@@ -60,21 +62,20 @@ Game::Game(Camera *  cam, std::string worldFolder_)
 	std::cout << "Done!" << std::endl;
 	player->setOnGround();
 	camera = cam;
-	chunkProvider = new ChunkProvider();
+	chunkProvider = new ChunkProvider(this);
 }
 
-std::array<Chunk *, Chunk::HEIGHT> Game::loadChunk(int cx, int cz)
+std::array<Chunk *, Chunk::HEIGHT> *  Game::loadChunk(int cx, int cz)
 {
 	if(loadWorld)
 	{
-		std::cout << "Loading chunk " << cx << ", " << cz << " from disk." << std::endl;
-		std::array<Chunk *, Chunk::HEIGHT> chunk =  wLoader->loadChunk(cx, cz, worldFolder);
-		return chunk;
+//		std::cout << "Loading chunk " << cx << ", " << cz << " from disk." << std::endl;
+		return wLoader->loadChunk(cx, cz, worldFolder);
 	}
-	std::array<Chunk *, Chunk::HEIGHT> chunk;
+	auto * chunk = new std::array<Chunk *, Chunk::HEIGHT>;
 	for(int i = 0; i < Chunk::HEIGHT; i++)
 	{
-		chunk[i] =  new Chunk(this, 0, cx, i ,cz, true);
+		(*chunk)[i] =  new Chunk(this, 0, cx, i ,cz, true);
 	}
 	return chunk;
 }
@@ -145,15 +146,6 @@ void Game::updateRenderQueue()
 	}
 }
 
-DWORD WINAPI threadFunction(LPVOID lpParameter)
-{
-	Game * game = (Game*) lpParameter;
-	game->loadChunks();
-	std::cout << "done" << std::endl;
-    return 0;
-}
-
-
 void Game::loadChunks()
 {
 	int x = player->pos.x;
@@ -167,9 +159,6 @@ void Game::loadChunks()
 	int RENDER_DISTANCE_SQUARED = RENDER_DISTANCE * RENDER_DISTANCE;
 
 
-	int closest = INT_MAX;
-	int ccx, ccz;
-
 	for(int dx = - RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++)
 	{
 		int dx_squared = dx * dx;
@@ -181,57 +170,58 @@ void Game::loadChunks()
 
 			int distance = std::abs(dx) + std::abs(dz);
 
-			if(distance >= closest)
-				continue;
-
-
 			int cx = pcx + dx;
 			int cz = pcz + dz;
 
 			if(!isChunkLoaded(cx, 0, cz))
 			{
-				closest = distance;
-				ccx = cx;
-				ccz = cz;
+				chunkProvider->requestChunk(cx, cz, distance);
 			}
 		}
 	}
+	chunkProvider->update();
 
-	if(closest == INT_MAX)
-		return;
+	auto available = chunkProvider->getAvailableChunks();
 
-	auto chunk = loadChunk(ccx, ccz);
-	for(int y = 0; y <= Chunk::HEIGHT; y++)
+	for(unsigned int i = 0; i < available.size(); i++)
 	{
-		chunkProvider->requestChunk(ccx, y, ccz);
-		chunks[ccx][y][ccz] = chunk[y];
+		auto chunk = available[i];
+		int cx = chunk[0]->cx;
+		int cz = chunk[0]->cz;
 
-		chunksToRemesh[ccx][y][ccz] = true;
-		chunksToRemesh[ccx-1][y][ccz] = true;
-		chunksToRemesh[ccx+1][y][ccz] = true;
-		chunksToRemesh[ccx][y-1][ccz] = true;
-		chunksToRemesh[ccx][y+1][ccz] = true;
-		chunksToRemesh[ccx][y][ccz+1] = true;
-		chunksToRemesh[ccx][y][ccz-1] = true;
-	}
-
-	for(auto x : chunksToRemesh)
-	{
-		int cx = x.first;
-		for(auto y : x.second)
+		for(int cy = 0; cy < Chunk::HEIGHT; cy++)
 		{
-			int cy = y.first;
-			for(auto z : y.second)
-			{
-				int cz = z.first;
-				if(z.second &&  isChunkLoaded(cx, cy, cz))
-				{
-					Chunk * chunk = getChunk(cx, cy, cz);
-					chunk->generateMesh();
-				}
-			}
+			chunk[cy]->loadToVao();
+			chunks[cx][cy][cz] = chunk[cy];
+//			chunksToRemesh[cx][cy][cz] = true;
 		}
 	}
+	chunkProvider->availableChunks.clear();
+//		chunksToRemesh[ccx][y][ccz] = true;
+//		chunksToRemesh[ccx-1][y][ccz] = true;
+//		chunksToRemesh[ccx+1][y][ccz] = true;
+//		chunksToRemesh[ccx][y-1][ccz] = true;
+//		chunksToRemesh[ccx][y+1][ccz] = true;
+//		chunksToRemesh[ccx][y][ccz+1] = true;
+//		chunksToRemesh[ccx][y][ccz-1] = true;
+
+//	for(auto x : chunksToRemesh)
+//	{
+//		int cx = x.first;
+//		for(auto y : x.second)
+//		{
+//			int cy = y.first;
+//			for(auto z : y.second)
+//			{
+//				int cz = z.first;
+//				if(z.second &&  isChunkLoaded(cx, cy, cz))
+//				{
+//					Chunk * chunk = getChunk(cx, cy, cz);
+//					chunk->generateMesh();
+//				}
+//			}
+//		}
+//	}
 }
 
 Chunk* Game::getChunk(int cx, int cy, int cz)
@@ -245,14 +235,8 @@ Chunk* Game::getChunk(int cx, int cy, int cz)
 void Game::update(float dt)
 {
 	camera->update(player);
-	player->move();
-//	chunkProvider->update();
-
-//    HANDLE hThread = CreateThread(NULL,0,threadFunction,this,0,NULL);
-//    WaitForSingleObject(hThread, INFINITE);
-//    CloseHandle(hThread);
-
-//	loadChunks();
+	player->move(dt);
+	loadChunks();
 	updateRenderQueue();
 }
 

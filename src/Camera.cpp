@@ -120,7 +120,6 @@ Camera::~Camera()
 
 void Camera::update(Player * player)
 {
-
 	pos = player->pos + glm::vec3(0., 0.72, 0.);
 	yaw = player->yaw;
 	pitch = player->pitch;

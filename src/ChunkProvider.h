@@ -2,24 +2,34 @@
 #define CHUNKPROVIDER_H_
 
 #include <winnt.h>
-#include <array>
+#include <map>
 #include <vector>
 
 #include "Chunk.h"
 
+struct threadInfo
+{
+	bool threadRunning = false;
+	std::array<Chunk *, Chunk::HEIGHT>** returnPointer = 0;
+	HANDLE threadHandle = 0;
+};
+
+
 class ChunkProvider
 {
+static const int MAX_THREADS = 8;
 
 public:
-    std::vector<Chunk *> availableChunks;
-    bool threadRunning;
-	HANDLE threadHandle;
-
+	Game * game;
+	std::array<threadInfo, MAX_THREADS> threads;
+	ChunkProvider(Game * game);
+    std::vector<std::array<Chunk *, Chunk::HEIGHT>> availableChunks;
+	std::map<int, std::map<int, bool>> isChunkRequested;
 	std::vector<std::array<int, 3>> requestedChunks;
 
-	std::vector<Chunk *> getAvailableChunks();
+	std::vector<std::array<Chunk *, Chunk::HEIGHT>> getAvailableChunks();
 	void update();
-	void requestChunk(int cx, int cy, int cz);
+	void requestChunk(int cx, int cz, int distance);
 };
 
 #endif /* CHUNKPROVIDER_H_ */

@@ -1,19 +1,19 @@
 #include "Chunk.h"
 
 #include <glm/detail/type_mat4x4.hpp>
-#include <glm/detail/type_vec2.hpp>
 #include <glm/detail/type_vec3.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <stdlib.h>
+#include <array>
 #include <iostream>
 
+#include "Block.h"
 #include "Game.h"
 #include "ImageLoader.h"
 #include "VAOLoader.h"
 #include "WorldGenerator.h"
-
-#include <iostream>
 
 class ImageLoader;
 
@@ -25,16 +25,17 @@ Chunk::Chunk(Game * game_, int SEED, int cx_, int cy_, int cz_, bool generate)
 	game = game_;
 	valid = false;
 
-	blocks = new char**[SIZE];
-	for(int x = 0; x < SIZE; x++)
-	{
-		blocks[x] = new char*[SIZE];
-		for(int y = 0; y < SIZE; y++)
-		{
-			blocks[x][y] = new char[SIZE];
-		}
-	}
+//	blocks = new char**[SIZE];
+//	for(int x = 0; x < SIZE; x++)
+//	{
+//		blocks[x] = new char*[SIZE];
+//		for(int y = 0; y < SIZE; y++)
+//		{
+//			blocks[x][y] = new char[SIZE];
+//		}
+//	}
 //	blocks = new Octree(SIZE);
+	blocks = new BlockPalette(SIZE);
 
 	if(generate)
 	{
@@ -49,14 +50,18 @@ Chunk::Chunk(Game * game_, int SEED, int cx_, int cy_, int cz_, bool generate)
 
 Chunk::Chunk(Game * game_, char*** blocks_, int cx_, int cy_, int cz_)
 {
+	blocks = new BlockPalette(SIZE);
 //	blocks = new Octree(SIZE);
-//
-//	for(int x = 0; x < SIZE; x++)
-//		for(int y = 0; y < SIZE; y++)
-//			for(int z = 0; z < SIZE; z++)
-//				blocks->set(x,y,z, blocks_[x][y][z]);
 
-	blocks = blocks_;
+	if(blocks_ == 0)
+		blocks->set(0,0,0,0);
+	else
+		for(int x = 0; x < SIZE; x++)
+			for(int y = 0; y < SIZE; y++)
+				for(int z = 0; z < SIZE; z++)
+					blocks->set(x,y,z, blocks_[x][y][z]);
+
+//	blocks = blocks_;
 	cx = cx_;
 	cy = cy_;
 	cz = cz_;
@@ -71,8 +76,8 @@ void Chunk::setBlock(int x, int y, int z, int id)
 	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE)
 			return game->setBlock(cx * SIZE + x, cy * SIZE + y, cz * SIZE + z, id);
 
-	blocks[x][y][z] = id;
-//	blocks->set(x,y,z,id);
+//	blocks[x][y][z] = id;
+	blocks->set(x,y,z,id);
 }
 
 char Chunk::getBlock(int x, int y, int z)
@@ -80,11 +85,12 @@ char Chunk::getBlock(int x, int y, int z)
 	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE)
 			return game->getBlock(cx * SIZE + x, cy * SIZE + y, cz * SIZE + z);
 
-	if(blocks == 0)
-		return Block::AIR;
+//	if(blocks == 0)
+//		return Block::AIR;
 
-	return blocks[x][y][z];
-//	return blocks->get(x,y,z);
+//	return blocks[x][y][z];
+	return blocks->get(x,y,z);
+//	return blocks.get(y*SIZE*SIZE+ x*SIZE + z);
 }
 
 bool Chunk::visibleOnSide(char id, int x, int y, int z)
@@ -113,14 +119,14 @@ int Chunk::calculateBlockVisibility(int x, int y, int z)
 
 void Chunk::generateMesh()
 {
-	if(!valid || blocks == 0)
+	if(!valid)
 		return;
 
 	auto visibilities = std::array<int, SIZE*SIZE*SIZE>();
 
 	int i = 0;
-	int vCount = 0;
-	int iCount = 0;
+	vCount = 0;
+	iCount = 0;
 
 	for(int x = 0; x < SIZE; x++)
 		for(int y = 0; y < SIZE; y++)
@@ -138,10 +144,10 @@ void Chunk::generateMesh()
 				iCount += Block::getIndexCount(block, visibilities[i++]);
 			}
 
-	GLfloat * verts = (GLfloat*) malloc(vCount*sizeof(GLfloat));
-	GLfloat * normals = (GLfloat*) malloc(vCount*sizeof(GLfloat));
-	GLfloat * uvs = (GLfloat*) malloc(((vCount*2)/3)*sizeof(GLfloat));
-	GLuint * indices = (GLuint*) malloc(iCount*sizeof(GLuint));
+	verts = new GLfloat[vCount];
+	normals = new GLfloat[vCount];
+	uvs = new GLfloat[(vCount*2)/3];
+	indices = new GLuint[iCount];
 
 	int v = 0, n = 0, u = 0, in = 0;
 
@@ -205,7 +211,12 @@ void Chunk::generateMesh()
 					uvs[u++] = atlasuv.y;
 				}
 			}
-	vao = VAOLoader::loadToVAO(verts,normals, uvs, indices, vCount, (vCount*2)/3, iCount);
+}
+
+void Chunk::loadToVao()
+{
+//	vao = VAOLoader::loadToVAO(verts, normals, uvs, indices, vCount, (vCount*2)/3, iCount);
+
 	delete[] verts;
 	delete[] normals;
 	delete[] uvs;
@@ -214,25 +225,26 @@ void Chunk::generateMesh()
 
 Chunk::~Chunk()
 {
-	for(int x = 0; x < SIZE; x++)
-		for(int y = 0; y < SIZE; y++)
-			delete[] blocks[x][y];
-
-	for(int x = 0; x < SIZE; x++)
-		delete[] blocks[x];
-
-	delete[] blocks;
-//	delete blocks;
+//	for(int x = 0; x < SIZE; x++)
+//		for(int y = 0; y < SIZE; y++)
+//			delete[] blocks[x][y];
+//
+//	for(int x = 0; x < SIZE; x++)
+//		delete[] blocks[x];
+//
+//	delete[] blocks;
+	delete blocks;
+	delete vao;
 }
 
 Chunk::Chunk()
 {
 //	blocks = new Octree(SIZE);
-	blocks = new char**[SIZE];
+//	blocks = new char**[SIZE];
+	blocks = new BlockPalette(SIZE);
 	valid = false;
 	cx = 0;
 	cy = 0;
 	cz = 0;
 	game = 0;
 }
-

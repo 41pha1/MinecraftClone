@@ -56,11 +56,11 @@ void Player::accelerate(glm::vec3 acc_)
 	acc += acc_;
 }
 
-void Player::move()
+void Player::move(float dt)
 {
 	onGround = false;
 
-	glm::vec3 frameVel = vel/3.f;
+	glm::vec3 frameVel = dt * vel/3.f;
 
 
 	if(isColliding())

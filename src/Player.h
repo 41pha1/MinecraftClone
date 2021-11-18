@@ -19,12 +19,12 @@ public:
 	bool onGround = false;
 	glm::vec3 hitrad  = glm::vec3(0.3, 0.9, 0.3);
 	glm::vec3 acc = glm::vec3(0,0,0);
-	glm::vec3 pos =  glm::vec3(-111, 130, 216);
+	glm::vec3 pos =  glm::vec3(-215, 71, 275);
 	glm::vec3 vel = glm::vec3(0,0,0);
 	float pitch = 0.5f, yaw = 0.5f;
 	Game * game;
 
-	void move();
+	void move(float dt);
 	void updateVelocity();
 	void accelerate(glm::vec3 acc);
 	void setOnGround();

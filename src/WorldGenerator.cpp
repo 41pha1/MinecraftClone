@@ -214,7 +214,19 @@ void WorldGenerator::generateTerrain(Chunk * chunk)
 		}
 	}
 //	chunk->blocks->set(blocks);
-	chunk->blocks = blocks;
+	for(int x = 0; x < size; x++)
+		for(int y = 0; y < size; y++)
+			for(int z = 0; z < size; z++)
+				chunk->blocks->set(x, y, z, blocks[x][y][z]);
+
+	for(int x = 0; x < size; x++)
+		for(int y = 0; y < size; y++)
+			delete[] blocks[x][y];
+
+	for(int x = 0; x < size; x++)
+		delete[] blocks[x];
+
+	delete[] blocks;
 }
 
 WorldGenerator::~WorldGenerator()

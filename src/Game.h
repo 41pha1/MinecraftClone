@@ -15,7 +15,7 @@
 class Game
 {
 public:
-	static const int RENDER_DISTANCE = 10;
+	static const int RENDER_DISTANCE = 3 ;
 
 	std::map<int, std::map<int, std::map<int, Chunk*>>> chunks = {};
 	std::vector<Chunk*> renderQueue = {};
@@ -37,7 +37,7 @@ public:
 	void update(float dt);
 	void tick();
 
-	std::array<Chunk *, Chunk::HEIGHT> loadChunk(int cx, int cz);
+	std::array<Chunk *, Chunk::HEIGHT>* loadChunk(int cx, int cz);
 	glm::vec3 toChunkCoords(int x, int y, int z);
 	void loadChunks();
 	bool isChunkLoaded(int cx, int cy, int cz);

@@ -16,6 +16,7 @@
 #include "Chunk.h"
 #include "ChunkRenderer.h"
 #include "ImageLoader.h"
+#include <iostream>
 
 class BoundingBoxRenderer;
 ShaderProgram * blockShader;
@@ -26,7 +27,7 @@ MasterRenderer::MasterRenderer(int width, int height)
 {
 	boundingBoxRenderer = new BoundingBoxRenderer();
 	blockShader = new BlockShader();
-	camera = new Camera(90, width, height, 0.1, 1000);
+	camera = new Camera(70, width, height, 0.1, 1000);
 }
 
 MasterRenderer::~MasterRenderer()
@@ -47,12 +48,12 @@ void MasterRenderer::render(Game* game)
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
-//	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_MULTISAMPLE);
 
 	if(game->camera->renderWireframe)
 		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 	else
-		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		glPolygonMode( GL_FRONT, GL_FILL );
 
 	glUseProgram(blockShader->ProgramID);
 	GLuint SkyColor = glGetUniformLocation(blockShader->ProgramID, "skyColor");

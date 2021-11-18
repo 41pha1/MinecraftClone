@@ -1,5 +1,6 @@
 #include "VAOLoader.h"
 
+#include <iostream>
 #include <iterator>
 
 static GLfloat g_vertex_buffer_data[] =

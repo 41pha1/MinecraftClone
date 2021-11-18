@@ -19,5 +19,5 @@ void main()
   float diffuse = (0.5+ max(0., dot(normal, lightDir)))/1.5;
   color = texCol.rgb * diffuse;
   float fogLinear =  min(1.0, length(position-camPos) / (viewDistance));
-  color = mix (color, skyColor, exp(5. * (fogLinear - 1)));
+  color = mix (color, skyColor, exp((viewDistance * 0.1) * (fogLinear - 1)));
 }

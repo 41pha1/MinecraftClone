@@ -10,11 +10,13 @@
 #include <map>
 
 #include "Block.h"
+#include "NBTData.h"
 #include "NBTParser.h"
+
+#include <sys/time.h>
 
 std::map<std::string, int> Block::nameToID;
 
-#include <sys/time.h>
 typedef unsigned long long timestamp_t;
 
 static timestamp_t
@@ -60,7 +62,7 @@ void MinecraftWorldLoader::loadRegion(std::string regionFileLocation)
 	}
 }
 
-std::array<Chunk*, Chunk::HEIGHT> MinecraftWorldLoader::loadChunk(int cx, int cz, std::string worldFolder)
+std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(int cx, int cz, std::string worldFolder)
 {
 	int rx = std::floor(cx/32.0);
 	int rz = std::floor(cz/32.0);
@@ -89,17 +91,17 @@ std::array<Chunk*, Chunk::HEIGHT> MinecraftWorldLoader::loadChunk(int cx, int cz
 	if(sectorCount != 0)
 		return loadChunk(*bytes, offset * 4096);
 
-	return std::array<Chunk *, Chunk::HEIGHT> {0};
+	return new std::array<Chunk *, Chunk::HEIGHT> {0};
 }
 
 
-std::array<Chunk*, Chunk::HEIGHT> MinecraftWorldLoader::loadChunk(std::vector<char> &bytes, long index)
+std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(std::vector<char> &bytes, long index)
 {
 //	timestamp_t t0 = get_timestamp();
 	int length = int((unsigned char)(bytes[index]) << 24 |
-		            (unsigned char)(bytes[index + 1]) << 16 |
-		            (unsigned char)(bytes[index + 2]) << 8 |
-		            (unsigned char)(bytes[index + 3]));
+					(unsigned char)(bytes[index + 1]) << 16 |
+					(unsigned char)(bytes[index + 2]) << 8 |
+					(unsigned char)(bytes[index + 3]));
 	int compression = int((unsigned char)bytes[index + 4]);
 
 	std::vector<char>::const_iterator first = bytes.begin() + index + 5;
@@ -119,7 +121,7 @@ std::array<Chunk*, Chunk::HEIGHT> MinecraftWorldLoader::loadChunk(std::vector<ch
 	int cx = *(int*) levelData->get("xPos")->data;
 	int cz = *(int*) levelData->get("zPos")->data;
 
-	auto subchunks = std::array<Chunk*, Chunk::HEIGHT>();
+	auto subchunks = new std::array<Chunk*, Chunk::HEIGHT>();
 	auto sections =  *(std::vector<NBTData *>*) levelData->get("Sections")->data;
 
 	for(NBTData * section : sections)
@@ -127,13 +129,13 @@ std::array<Chunk*, Chunk::HEIGHT> MinecraftWorldLoader::loadChunk(std::vector<ch
 		char cy = *(char*)section->get("Y")->data;
 
 		if(cy >= 0 && cy < Chunk::HEIGHT && section->get("BlockStates") != 0)
-			subchunks[cy] = new Chunk(game, loadSection(section), cx, cy, cz);
+			(*subchunks)[cy] = new Chunk(game, loadSection(section), cx, cy, cz);
 	}
 
 	for(int cy = 0; cy < Chunk::HEIGHT; cy ++)
 	{
-		if(subchunks[cy] == 0)
-			subchunks[cy] = new Chunk(game, (char***) 0, cx, cy, cz);
+		if((*subchunks)[cy] == 0)
+			(*subchunks)[cy] = new Chunk(game, (char***) 0, cx, cy, cz);
 	}
 
 	delete chunkData;
