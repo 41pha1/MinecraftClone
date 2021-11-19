@@ -15,11 +15,12 @@ public:
 	float JUMP_POWER = 0.55f;      //++
 	float FLYING_SPEED = 2.f;
 	bool FLYING = true;
+	bool COLLISION = true;
 
 	bool onGround = false;
 	glm::vec3 hitrad  = glm::vec3(0.3, 0.9, 0.3);
 	glm::vec3 acc = glm::vec3(0,0,0);
-	glm::vec3 pos =  glm::vec3(-215, 71, 275);
+	glm::vec3 pos =  glm::vec3(-215-1000, 71, 275);
 	glm::vec3 vel = glm::vec3(0,0,0);
 	float pitch = 0.5f, yaw = 0.5f;
 	Game * game;

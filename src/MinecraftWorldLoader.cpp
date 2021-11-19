@@ -1,31 +1,23 @@
 #include "MinecraftWorldLoader.h"
 
+#include <sys/time.h>
 #include <zconf.h>
 #include <zlib.h>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <map>
 
 #include "Block.h"
+#include "BlockPalette.h"
+#include "Chunk.h"
 #include "NBTData.h"
 #include "NBTParser.h"
-
-#include <sys/time.h>
+#include "Subchunk.h"
 
 std::map<std::string, int> Block::nameToID;
-
-typedef unsigned long long timestamp_t;
-
-static timestamp_t
-get_timestamp ()
-{
- struct timeval now;
- gettimeofday (&now, NULL);
- return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
-}
 
 MinecraftWorldLoader::MinecraftWorldLoader(Game * game_)
 {
@@ -62,7 +54,18 @@ void MinecraftWorldLoader::loadRegion(std::string regionFileLocation)
 	}
 }
 
-std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(int cx, int cz, std::string worldFolder)
+Chunk* MinecraftWorldLoader::newEmptyChunk(int cx, int cz)
+{
+	auto subchunks = new std::array<Subchunk*, Chunk::HEIGHT>();
+	auto chunk =  new Chunk(game, subchunks, cx, cz);
+
+	for(int cy = 0; cy < Chunk::HEIGHT; cy ++)
+		subchunks->operator [](cy) = new Subchunk(chunk, new BlockPalette(Chunk::SIZE), cx, cy, cz);
+
+	return chunk;
+}
+
+Chunk * MinecraftWorldLoader::loadChunk(int cx, int cz, std::string worldFolder)
 {
 	int rx = std::floor(cx/32.0);
 	int rz = std::floor(cz/32.0);
@@ -70,12 +73,21 @@ std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(int cx, int c
 	std::vector<char>* bytes;
 
 	if(regionFiles.count(rx) != 0 && regionFiles[rx].count(rz) != 0)
+	{
 		bytes = regionFiles[rx][rz];
+		if(bytes == 0)
+			return newEmptyChunk(cx, cz);
+	}
 	else
 	{
 		std::string regionFileLocation = worldFolder + "/region/r." + std::to_string(rx) + "." + std::to_string(rz) + ".mca";
 		std::cout << regionFileLocation << std::endl;
 		std::ifstream input(regionFileLocation, std::ios::binary);
+		if(input.fail())
+		{
+			regionFiles[rx][rz] = 0;
+			return newEmptyChunk(cx, cz);
+		}
 
 		bytes = new std::vector<char>((std::istreambuf_iterator<char>(input)), (std::istreambuf_iterator<char>()));
 		regionFiles[rx][rz] = bytes;
@@ -91,13 +103,12 @@ std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(int cx, int c
 	if(sectorCount != 0)
 		return loadChunk(*bytes, offset * 4096);
 
-	return new std::array<Chunk *, Chunk::HEIGHT> {0};
+	return newEmptyChunk(cx, cz);
 }
 
 
-std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(std::vector<char> &bytes, long index)
+Chunk * MinecraftWorldLoader::loadChunk(std::vector<char> &bytes, long index)
 {
-//	timestamp_t t0 = get_timestamp();
 	int length = int((unsigned char)(bytes[index]) << 24 |
 					(unsigned char)(bytes[index + 1]) << 16 |
 					(unsigned char)(bytes[index + 2]) << 8 |
@@ -121,63 +132,41 @@ std::array<Chunk*, Chunk::HEIGHT>* MinecraftWorldLoader::loadChunk(std::vector<c
 	int cx = *(int*) levelData->get("xPos")->data;
 	int cz = *(int*) levelData->get("zPos")->data;
 
-	auto subchunks = new std::array<Chunk*, Chunk::HEIGHT>();
+	auto subchunks = new std::array<Subchunk*, Chunk::HEIGHT>();
 	auto sections =  *(std::vector<NBTData *>*) levelData->get("Sections")->data;
+
+	auto chunk = new Chunk(game, subchunks, cx, cz);
 
 	for(NBTData * section : sections)
 	{
 		char cy = *(char*)section->get("Y")->data;
 
 		if(cy >= 0 && cy < Chunk::HEIGHT && section->get("BlockStates") != 0)
-			(*subchunks)[cy] = new Chunk(game, loadSection(section), cx, cy, cz);
+		{
+			auto blocks = loadSection(section);
+			(*subchunks)[cy] = new Subchunk(chunk, blocks, cx, cy, cz);
+		}
 	}
 
 	for(int cy = 0; cy < Chunk::HEIGHT; cy ++)
 	{
 		if((*subchunks)[cy] == 0)
-			(*subchunks)[cy] = new Chunk(game, (char***) 0, cx, cy, cz);
+			(*subchunks)[cy] = new Subchunk(chunk, new BlockPalette(Chunk::SIZE), cx, cy, cz);
 	}
 
 	delete chunkData;
-
-//	timestamp_t t1 = get_timestamp();
-//	double secs = (t1 - t0) / 1000000.0L;
-//	std::cout << "decode chunk: " << secs << "secs." << std::endl;
-
-	return subchunks;
+	return chunk;
 }
 
-char*** MinecraftWorldLoader::loadSection(NBTData * section)
+BlockPalette * MinecraftWorldLoader::loadSection(NBTData * section)
 {
-	int size = Chunk::SIZE;
-
-	char *** blocks = new char**[size];
-	for(int i = 0; i < size; i++)
-	{
-		blocks[i] = new char*[size];
-		for(int j = 0; j < size; j++)
-		{
-			blocks[i][j] = new char[size];
-			for(int k = 0; k < size; k++)
-			{
-				blocks[i][j][k] = 0;
-			}
-		}
-	}
+	auto blocks = new BlockPalette(Chunk::SIZE);
 	std::vector<long long> blockStates = *(std::vector<long long> *)section->get("BlockStates")->data;
 	std::vector<NBTData *> palette = *(std::vector<NBTData *> *)section->get("Palette")->data;
 	std::vector<std::string> blockIDs(palette.size());
 	std::transform(palette.begin(), palette.end(), blockIDs.begin(), [](NBTData * data) -> std::string { return *(std::string*) data->get("Name")->data; });
 
 	int bitsPerIndex = std::max(4, 32 -__builtin_clz(palette.size()-1));
-
-//	if(__builtin_popcount(bitsPerIndex) == 1)
-//	{
-//		return blocks;
-//	}
-
-//	std::cout << "start with non power of two" << std::endl;
-
 	int indicesPerLong = int(64 / bitsPerIndex);
 
 	int x = 0, z = 0, y = 0;
@@ -199,7 +188,7 @@ char*** MinecraftWorldLoader::loadSection(NBTData * section)
 //				std::cerr << "Unkown block id " << blockIDs[index] << std::endl;
 			}
 
-			blocks[x][y][z] = id;
+			blocks->set(x,y,z,id);
 
 			x ++;
 			if(x % 16 == 0){
@@ -219,7 +208,6 @@ char*** MinecraftWorldLoader::loadSection(NBTData * section)
 
 		}
 	}
-
 	return blocks;
 }
 

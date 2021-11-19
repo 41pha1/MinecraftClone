@@ -20,12 +20,11 @@ public:
 	SimplexNoise noise;
 	std::map<int, std::map<int, float*>> heightMaps;
 	WorldGenerator(std::size_t seed);
-	std::size_t calculateChunkSeed(int cx, int cy, int cz);
+	std::size_t calculateChunkSeed(int cx, int cz);
 	void generateTree(Chunk * chunk, int x, int y, int z, int type);
 	void generateTerrain(Chunk * chunk);
 	void populateTerrain(Chunk * chunk);
-	bool doesHeightMapExist(int cx, int cz);
-	void generareHeightMap(int cx, int cz);
+	float * generareHeightMap(int cx, int cz);
 	virtual ~WorldGenerator();
 };
 

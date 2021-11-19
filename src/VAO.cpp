@@ -9,7 +9,11 @@ VAO::VAO(GLuint id)
 
 VAO::~VAO()
 {
-
+	glDeleteVertexArrays(1, &vaoID);
+	glDeleteBuffers(1, &vertexBuffer);
+	glDeleteBuffers(1, &UVBuffer);
+	glDeleteBuffers(1, &normalBuffer);
+	glDeleteBuffers(1, &normalBuffer);
 }
 
 void VAO::enableVAO()

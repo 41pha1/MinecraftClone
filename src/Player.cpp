@@ -20,6 +20,8 @@ Player::Player(Game * game_)
 
 bool Player::isColliding()
 {
+	if(!COLLISION)
+		return false;
 	for(int dx = -2; dx <= 2; dx++)
 	{
 		for(int dy = -2; dy <= 2; dy++)

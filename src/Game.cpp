@@ -1,24 +1,24 @@
 #include "Game.h"
 
 #include <glm/detail/type_vec3.hpp>
-#include <winbase.h>
-#include <windef.h>
-#include <winnt.h>
-#include <array>
-#include <climits>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
 
 #include "Block.h"
+#include "Camera.h"
+#include "ChunkProvider.h"
+#include "MinecraftWorldLoader.h"
 #include "Player.h"
+#include "WorldGenerator.h"
 
 Game::Game(Camera *  cam, std::string worldFolder_)
 {
 	cam->game = this;
+	invalidChunk = new Chunk();
 	generator = new WorldGenerator(1234L);
 	player = new Player(this);
-	chunks = std::map<int, std::map<int, std::map<int, Chunk *>>>();
+	chunks = std::map<int, std::map<int, Chunk *>>();
 	wLoader = new MinecraftWorldLoader(this);
 
 	if(worldFolder_ != "")
@@ -36,57 +36,46 @@ Game::Game(Camera *  cam, std::string worldFolder_)
 		for(int z = -1; z < 1; z++)
 		{
 			auto chunk = loadChunk(x+px, z+pz);
-			for(int y = 0; y < Chunk::HEIGHT; y++)
-			{
-				chunks.operator[](x+px)[y][z+pz] = (*chunk)[y];
-			}
+			chunks.operator[](x+px)[z+pz] = chunk;
 		}
 	}
 
 	std::cout << "meshing chunks..." << std::endl;
 	for(auto x : chunks)
 	{
-		for(auto y : x.second)
+		for(auto z : x.second)
 		{
-			for(auto z : y.second)
+			if(z.second->valid)
 			{
-				if(z.second->blocks != 0)
-				{
-					z.second->generateMesh();
-					z.second->loadToVao();
-					renderQueue.push_back(z.second);
-				}
+				z.second->generateMesh();
+				z.second->loadToVao();
+				renderQueue.push_back(z.second);
 			}
 		}
 	}
 	std::cout << "Done!" << std::endl;
-	player->setOnGround();
+	//player->setOnGround();
 	camera = cam;
 	chunkProvider = new ChunkProvider(this);
 }
 
-std::array<Chunk *, Chunk::HEIGHT> *  Game::loadChunk(int cx, int cz)
+Chunk *  Game::loadChunk(int cx, int cz)
 {
 	if(loadWorld)
 	{
-//		std::cout << "Loading chunk " << cx << ", " << cz << " from disk." << std::endl;
 		return wLoader->loadChunk(cx, cz, worldFolder);
 	}
-	auto * chunk = new std::array<Chunk *, Chunk::HEIGHT>;
-	for(int i = 0; i < Chunk::HEIGHT; i++)
-	{
-		(*chunk)[i] =  new Chunk(this, 0, cx, i ,cz, true);
-	}
-	return chunk;
+	return new Chunk(this, cx, cz);
 }
 
 char Game::getBlock(int x, int y, int z)
 {
+	if(y < 0 || y >= Chunk::SIZE * Chunk::HEIGHT)
+		return Block::AIR;
 	int cx = (x + (x<0 ? 1 : 0)) / Chunk::SIZE - (x<0 ? 1 : 0);
-	int cy = (y + (y<0 ? 1 : 0)) / Chunk::SIZE - (y<0 ? 1 : 0);
 	int cz = (z + (z<0 ? 1 : 0)) / Chunk::SIZE - (z<0 ? 1 : 0);
 
-	Chunk * chunk = getChunk(cx, cy, cz);
+	Chunk * chunk = getChunk(cx, cz);
 
 	if(!chunk->valid)
 		return invalidBlock;
@@ -95,52 +84,41 @@ char Game::getBlock(int x, int y, int z)
 	return chunk->getBlock((char)chunkCoords.x, (char)chunkCoords.y, (char)chunkCoords.z);
 }
 
-bool Game::isChunkLoaded(int cx, int cy, int cz)
+bool Game::isChunkLoaded(int cx, int cz)
 {
 	if(chunks.count(cx) == 0)
 		return false;
-	if(chunks[cx].count(cy) == 0)
+	if(chunks[cx].count(cz) == 0)
 		return false;
 
-	if (chunks[cx][cy].count(cz) == 0)
-		return false;
-
-	return chunks[cx][cy][cz] != NULL;
+	return chunks[cx][cz] != NULL;
 }
 
 void Game::updateRenderQueue()
 {
 	renderQueue.clear();
 	int x = player->pos.x;
-	int y = player->pos.y;
 	int z = player->pos.z;
 
 	int pcx = (x + (x<0 ? 1 : 0)) / Chunk::SIZE - (x<0 ? 1 : 0);
-	int pcy = (y + (y<0 ? 1 : 0)) / Chunk::SIZE - (y<0 ? 1 : 0);
 	int pcz = (z + (z<0 ? 1 : 0)) / Chunk::SIZE - (z<0 ? 1 : 0);
 
 	int RENDER_DISTANCE_SQUARED = RENDER_DISTANCE * RENDER_DISTANCE;
 	for(int dx = - RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++)
 	{
 		int dx_squared = dx * dx;
-		for(int dy = - RENDER_DISTANCE; dy <= RENDER_DISTANCE; dy++)
+
+		for(int dz = - RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++)
 		{
-			if(dy*dy > RENDER_DISTANCE_SQUARED)
+			if((dx_squared + dz*dz)>RENDER_DISTANCE_SQUARED )
 				continue;
 
-			for(int dz = - RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++)
+			int cx = pcx + dx;
+			int cz = pcz + dz;
+
+			if(isChunkLoaded(cx, cz) && getChunk(cx, cz)->valid && getChunk(cx, cz)->vao != 0)
 			{
-				if((dx_squared + dz*dz)>RENDER_DISTANCE_SQUARED )
-					continue;
-
-				int cx = pcx + dx;
-				int cy = pcy + dy;
-				int cz = pcz + dz;
-
-				if(isChunkLoaded(cx, cy, cz) && getChunk(cx, cy, cz)->blocks != 0)
-				{
-					renderQueue.push_back(getChunk(cx, cy, cz));
-				}
+				renderQueue.push_back(getChunk(cx, cz));
 			}
 		}
 	}
@@ -156,14 +134,13 @@ void Game::loadChunks()
 
 	std::map<int, std::map<int, std::map<int, bool>>> chunksToRemesh;
 
-	int RENDER_DISTANCE_SQUARED = RENDER_DISTANCE * RENDER_DISTANCE;
+	int RENDER_DISTANCE_SQUARED = (RENDER_DISTANCE+1) * (RENDER_DISTANCE+1);
 
-
-	for(int dx = - RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++)
+	for(int dx = - RENDER_DISTANCE-1; dx <= RENDER_DISTANCE+1; dx++)
 	{
 		int dx_squared = dx * dx;
 
-		for(int dz =  -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++)
+		for(int dz =  -RENDER_DISTANCE-1; dz <= RENDER_DISTANCE+1; dz++)
 		{
 			if((dx_squared + dz*dz)>RENDER_DISTANCE_SQUARED)
 				continue;
@@ -173,61 +150,76 @@ void Game::loadChunks()
 			int cx = pcx + dx;
 			int cz = pcz + dz;
 
-			if(!isChunkLoaded(cx, 0, cz))
+			if(!isChunkLoaded(cx, cz))
 			{
 				chunkProvider->requestChunk(cx, cz, distance);
+			}else
+			{
+				auto chunk = getChunk(cx, cz);
+				if(!chunk->meshed)
+				{
+					if(getChunk(cx+1, cz)->valid && getChunk(cx-1, cz)->valid && getChunk(cx, cz+1)->valid && getChunk(cx, cz-1)->valid)
+					chunkProvider->requestChunkMesh(chunk);
+				}
 			}
 		}
 	}
-	chunkProvider->update();
+	chunkProvider->update(pcx, pcz);
 
 	auto available = chunkProvider->getAvailableChunks();
 
 	for(unsigned int i = 0; i < available.size(); i++)
 	{
 		auto chunk = available[i];
-		int cx = chunk[0]->cx;
-		int cz = chunk[0]->cz;
+		int cx = chunk->cx;
+		int cz = chunk->cz;
 
-		for(int cy = 0; cy < Chunk::HEIGHT; cy++)
-		{
-			chunk[cy]->loadToVao();
-			chunks[cx][cy][cz] = chunk[cy];
-//			chunksToRemesh[cx][cy][cz] = true;
-		}
+		chunks[cx][cz] = chunk;
 	}
 	chunkProvider->availableChunks.clear();
-//		chunksToRemesh[ccx][y][ccz] = true;
-//		chunksToRemesh[ccx-1][y][ccz] = true;
-//		chunksToRemesh[ccx+1][y][ccz] = true;
-//		chunksToRemesh[ccx][y-1][ccz] = true;
-//		chunksToRemesh[ccx][y+1][ccz] = true;
-//		chunksToRemesh[ccx][y][ccz+1] = true;
-//		chunksToRemesh[ccx][y][ccz-1] = true;
 
-//	for(auto x : chunksToRemesh)
-//	{
-//		int cx = x.first;
-//		for(auto y : x.second)
-//		{
-//			int cy = y.first;
-//			for(auto z : y.second)
-//			{
-//				int cz = z.first;
-//				if(z.second &&  isChunkLoaded(cx, cy, cz))
-//				{
-//					Chunk * chunk = getChunk(cx, cy, cz);
-//					chunk->generateMesh();
-//				}
-//			}
-//		}
-//	}
+	auto meshed = chunkProvider->getAvailableMeshes();
+	for(unsigned int i = 0; i < meshed.size(); i++)
+	{
+		auto chunk = meshed[i];
+		chunk->loadToVao();
+	}
+	chunkProvider->meshedChunks.clear();
 }
 
-Chunk* Game::getChunk(int cx, int cy, int cz)
+void Game::unloadChunks()
 {
-	if(isChunkLoaded(cx, cy, cz))
-		return chunks[cx][cy][cz];
+	int x = player->pos.x;
+	int z = player->pos.z;
+
+	int pcx = (x + (x<0 ? 1 : 0)) / Chunk::SIZE - (x<0 ? 1 : 0);
+	int pcz = (z + (z<0 ? 1 : 0)) / Chunk::SIZE - (z<0 ? 1 : 0);
+
+	for(auto x : chunks)
+	{
+		for(auto z : x.second)
+		{
+			int cx = z.second->cx;
+			int cz = z.second->cz;
+
+			int dx = cx-pcx;
+			int dz = cz-pcz;
+
+			if((dx*dx+dz*dz)>(RENDER_DISTANCE+2)*(RENDER_DISTANCE+2))
+			{
+				delete z.second;
+				chunkProvider->isChunkRequested[cx][cz] = false;
+				chunkProvider->isChunkMeshingRequested[cx][cz] = false;
+				chunks[cx].erase(cz);
+			}
+		}
+	}
+}
+
+Chunk* Game::getChunk(int cx, int cz)
+{
+	if(isChunkLoaded(cx, cz))
+		return chunks[cx][cz];
 
 	return invalidChunk;
 }
@@ -237,6 +229,7 @@ void Game::update(float dt)
 	camera->update(player);
 	player->move(dt);
 	loadChunks();
+	unloadChunks();
 	updateRenderQueue();
 }
 
@@ -259,7 +252,7 @@ void Game::tick()
 glm::vec3 Game::toChunkCoords(int x, int y, int z)
 {
 	int bx = x < 0 ?  (((x) % Chunk::SIZE + Chunk::SIZE) % Chunk::SIZE): x % Chunk::SIZE;
-	int by = y < 0 ?  (((y) % Chunk::SIZE + Chunk::SIZE) % Chunk::SIZE): y % Chunk::SIZE;
+	int by = y;
 	int bz = z < 0 ?  (((z) % Chunk::SIZE + Chunk::SIZE) % Chunk::SIZE): z % Chunk::SIZE;
 	return glm::vec3(bx, by, bz);
 }
@@ -267,10 +260,9 @@ glm::vec3 Game::toChunkCoords(int x, int y, int z)
 void Game::setBlock(int x, int y, int z, int id)
 {
 	int cx = (x + (x<0 ? 1 : 0)) / Chunk::SIZE - (x<0 ? 1 : 0);
-	int cy = (y + (y<0 ? 1 : 0)) / Chunk::SIZE - (y<0 ? 1 : 0);
 	int cz = (z + (z<0 ? 1 : 0)) / Chunk::SIZE - (z<0 ? 1 : 0);
 
-	Chunk * chunk = getChunk(cx, cy, cz);
+	Chunk * chunk = getChunk(cx, cz);
 
 	if(!chunk->valid)
 		return;
@@ -284,9 +276,9 @@ void Game::placeBlock(int x, int y, int z, int id)
 {
 	setBlock(x, y, z, id);
 	int cx = (x + (x<0 ? 1 : 0)) / Chunk::SIZE - (x<0 ? 1 : 0);
-	int cy = (y + (y<0 ? 1 : 0)) / Chunk::SIZE - (y<0 ? 1 : 0);
 	int cz = (z + (z<0 ? 1 : 0)) / Chunk::SIZE - (z<0 ? 1 : 0);
-	getChunk(cx, cy, cz)->generateMesh();
+	getChunk(cx, cz)->generateMesh();
+	getChunk(cx, cz)->loadToVao();
 
 	updateQueue.push_back(glm::vec3(x+1, y, z));
 	updateQueue.push_back(glm::vec3(x-1, y, z));
@@ -297,16 +289,20 @@ void Game::placeBlock(int x, int y, int z, int id)
 
 	glm::vec3 chunkCoords = toChunkCoords(x, y, z);
 
-	if(chunkCoords.x == 0)
-		getChunk(cx-1, cy, cz)->generateMesh();
-	if(chunkCoords.x== Chunk::SIZE-1)
-		getChunk(cx+1, cy, cz)->generateMesh();
-	if(chunkCoords.y == 0)
-		getChunk(cx, cy-1, cz)->generateMesh();
-	if(chunkCoords.y == Chunk::SIZE-1)
-		getChunk(cx, cy+1, cz)->generateMesh();
-	if(chunkCoords.z== 0)
-		getChunk(cx, cy, cz-1)->generateMesh();
-	if(chunkCoords.z == Chunk::SIZE-1)
-		getChunk(cx, cy, cz+1)->generateMesh();
+	if(chunkCoords.x == 0){
+		getChunk(cx-1, cz)->generateMesh();
+		getChunk(cx-1, cz)->loadToVao();
+	}
+	if(chunkCoords.x== Chunk::SIZE-1){
+		getChunk(cx+1, cz)->generateMesh();
+		getChunk(cx+1, cz)->loadToVao();
+	}
+	if(chunkCoords.z== 0){
+		getChunk(cx, cz-1)->generateMesh();
+		getChunk(cx, cz-1)->loadToVao();
+	}
+	if(chunkCoords.z == Chunk::SIZE-1){
+		getChunk(cx, cz+1)->generateMesh();
+		getChunk(cx, cz+1)->loadToVao();
+	}
 }

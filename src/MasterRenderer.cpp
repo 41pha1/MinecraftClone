@@ -48,7 +48,7 @@ void MasterRenderer::render(Game* game)
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_MULTISAMPLE);
+//	glEnable(GL_MULTISAMPLE);
 
 	if(game->camera->renderWireframe)
 		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );

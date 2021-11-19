@@ -5,92 +5,71 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
-#include <stdlib.h>
-#include <array>
 #include <iostream>
 
 #include "Block.h"
 #include "Game.h"
 #include "ImageLoader.h"
+#include "VAO.h"
 #include "VAOLoader.h"
 #include "WorldGenerator.h"
 
 class ImageLoader;
 
-Chunk::Chunk(Game * game_, int SEED, int cx_, int cy_, int cz_, bool generate)
+Chunk::Chunk(Game * game_, int cx_, int cz_)
 {
 	cx = cx_;
-	cy = cy_;
 	cz = cz_;
 	game = game_;
-	valid = false;
+	valid = true;
+	subchunks = new std::array<Subchunk*, HEIGHT>();
 
-//	blocks = new char**[SIZE];
-//	for(int x = 0; x < SIZE; x++)
-//	{
-//		blocks[x] = new char*[SIZE];
-//		for(int y = 0; y < SIZE; y++)
-//		{
-//			blocks[x][y] = new char[SIZE];
-//		}
-//	}
-//	blocks = new Octree(SIZE);
-	blocks = new BlockPalette(SIZE);
-
-	if(generate)
-	{
-		game->generator->generateTerrain(this);
-		game->generator->populateTerrain(this);
-		valid = true;
-	}
+	game->generator->generateTerrain(this);
+	game->generator->populateTerrain(this);
 
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(SIZE*cx,SIZE*cy,SIZE*cz));
+	model = glm::translate(model, glm::vec3(SIZE*cx,0,SIZE*cz));
+	meshed = false;
 }
 
-Chunk::Chunk(Game * game_, char*** blocks_, int cx_, int cy_, int cz_)
+Chunk::Chunk(Game * game_, std::array<Subchunk*, HEIGHT>* subchunks_, int cx_, int cz_)
 {
-	blocks = new BlockPalette(SIZE);
-//	blocks = new Octree(SIZE);
+	subchunks = subchunks_;
 
-	if(blocks_ == 0)
-		blocks->set(0,0,0,0);
-	else
-		for(int x = 0; x < SIZE; x++)
-			for(int y = 0; y < SIZE; y++)
-				for(int z = 0; z < SIZE; z++)
-					blocks->set(x,y,z, blocks_[x][y][z]);
-
-//	blocks = blocks_;
 	cx = cx_;
-	cy = cy_;
 	cz = cz_;
 	game = game_;
 	valid = true;
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(SIZE*cx,SIZE*cy,SIZE*cz));
+	model = glm::translate(model, glm::vec3(SIZE*cx,0,SIZE*cz));
+	meshed = false;
 }
 
 void Chunk::setBlock(int x, int y, int z, int id)
 {
-	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE)
-			return game->setBlock(cx * SIZE + x, cy * SIZE + y, cz * SIZE + z, id);
+	if(!valid)
+		return;
 
-//	blocks[x][y][z] = id;
-	blocks->set(x,y,z,id);
+	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE * HEIGHT || z < 0 || z >= SIZE)
+		return game->setBlock(cx * SIZE + x, y, cz * SIZE + z, id);
+
+	int cy = y / SIZE;
+	subchunks->operator [](cy)->setBlock(x,y % SIZE,z,id);
 }
 
 char Chunk::getBlock(int x, int y, int z)
 {
-	if(x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE)
-			return game->getBlock(cx * SIZE + x, cy * SIZE + y, cz * SIZE + z);
+	if(!valid)
+		return Block::UNKNOWN;
 
-//	if(blocks == 0)
-//		return Block::AIR;
+	if( y < 0 || y >= SIZE * HEIGHT)
+		return Block::AIR;
 
-//	return blocks[x][y][z];
-	return blocks->get(x,y,z);
-//	return blocks.get(y*SIZE*SIZE+ x*SIZE + z);
+	if(x < 0 || x >= SIZE || z < 0 || z >= SIZE)
+		return game->getBlock(cx * SIZE + x, y, cz * SIZE + z);
+
+	int cy = y / SIZE;
+	return subchunks->operator [](cy)->getBlock(x,y % SIZE,z);
 }
 
 bool Chunk::visibleOnSide(char id, int x, int y, int z)
@@ -99,9 +78,8 @@ bool Chunk::visibleOnSide(char id, int x, int y, int z)
 	return Block::isTransparent(other) && (id != other || id == Block::LEAF);
 }
 
-int Chunk::calculateBlockVisibility(int x, int y, int z)
+int Chunk::calculateBlockVisibility(int x, int y, int z, char id)
 {
-	char id = getBlock(x, y, z);
 	int visibility = 0;
 	visibility += visibleOnSide(id, x+1, y, z);
 	visibility <<= 1;
@@ -117,19 +95,20 @@ int Chunk::calculateBlockVisibility(int x, int y, int z)
 	return visibility;
 }
 
+
 void Chunk::generateMesh()
 {
 	if(!valid)
 		return;
 
-	auto visibilities = std::array<int, SIZE*SIZE*SIZE>();
+	auto visibilities = std::array<int, SIZE*SIZE*SIZE*HEIGHT>();
 
 	int i = 0;
 	vCount = 0;
 	iCount = 0;
 
 	for(int x = 0; x < SIZE; x++)
-		for(int y = 0; y < SIZE; y++)
+		for(int y = 0; y < SIZE * HEIGHT; y++)
 			for(int z = 0; z < SIZE; z++)
 			{
 				char block = getBlock(x,y,z);
@@ -137,8 +116,7 @@ void Chunk::generateMesh()
 				if(!Block::isRenderable(block))
 					visibilities[i] = 0;
 				else
-					visibilities[i] = calculateBlockVisibility(x, y, z);
-
+					visibilities[i] = calculateBlockVisibility(x, y, z, block);
 
 				vCount += Block::getVertexCount(block, visibilities[i]);
 				iCount += Block::getIndexCount(block, visibilities[i++]);
@@ -154,7 +132,7 @@ void Chunk::generateMesh()
 	i = 0;
 	int index = 0;
 	for(int x = 0; x < SIZE; x++)
-		for(int y = 0; y < SIZE; y++)
+		for(int y = 0; y < SIZE*HEIGHT; y++)
 			for(int z = 0; z < SIZE; z++)
 			{
 				int visibility = visibilities[i++];
@@ -211,11 +189,15 @@ void Chunk::generateMesh()
 					uvs[u++] = atlasuv.y;
 				}
 			}
+	meshed = true;
 }
 
 void Chunk::loadToVao()
 {
-//	vao = VAOLoader::loadToVAO(verts, normals, uvs, indices, vCount, (vCount*2)/3, iCount);
+	if(vao != 0)
+		delete vao;
+
+	vao = VAOLoader::loadToVAO(verts, normals, uvs, indices, vCount, (vCount*2)/3, iCount);
 
 	delete[] verts;
 	delete[] normals;
@@ -223,28 +205,20 @@ void Chunk::loadToVao()
 	delete[] indices;
 }
 
-Chunk::~Chunk()
-{
-//	for(int x = 0; x < SIZE; x++)
-//		for(int y = 0; y < SIZE; y++)
-//			delete[] blocks[x][y];
-//
-//	for(int x = 0; x < SIZE; x++)
-//		delete[] blocks[x];
-//
-//	delete[] blocks;
-	delete blocks;
-	delete vao;
-}
-
 Chunk::Chunk()
 {
-//	blocks = new Octree(SIZE);
-//	blocks = new char**[SIZE];
-	blocks = new BlockPalette(SIZE);
 	valid = false;
 	cx = 0;
-	cy = 0;
 	cz = 0;
+	subchunks = 0;
 	game = 0;
+	meshed = false;
+}
+
+Chunk::~Chunk()
+{
+	for(int i = 0; i < HEIGHT; i++)
+		delete subchunks->operator [](i);
+	delete subchunks;
+	delete vao;
 }

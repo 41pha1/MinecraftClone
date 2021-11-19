@@ -3,12 +3,11 @@
 #include <winbase.h>
 #include <windef.h>
 #include <algorithm>
-#include <array>
+#include <iostream>
 #include <string>
 
-#include "Game.h"
 
- std::vector<std::array<Chunk *, Chunk::HEIGHT>> ChunkProvider::getAvailableChunks()
+ std::vector<Chunk*> ChunkProvider::getAvailableChunks()
 {
 	return availableChunks;
 }
@@ -17,26 +16,26 @@ struct threadData
 {
 	std::array<int, 2> coord;
 	Game * game;
-	std::array<Chunk *, Chunk::HEIGHT>** savePointer;
+	Chunk** savePointer;
+};
+
+struct meshThreadData
+{
+	Chunk * chunk;
 };
 
 DWORD WINAPI chunkloadThread(LPVOID lpParameter)
 {
 	auto data = (threadData *) lpParameter;
-	auto chunk = data->game->loadChunk(data->coord[0], data->coord[1]);
-	for(int i = 0; i < Chunk::HEIGHT; i++)
-	{
-		(*chunk)[i]->generateMesh();
-	}
-
-//	std::cout << (*chunk)[0]->cx << ",  " << (*chunk)[0]->cz << ", "  << (*chunk)[0]->vCount <<std::endl;
-//	std::cout << "verts: ";
-//	for(int i = 0; i < (*chunk)[0]->vCount / 10; i++)
-//		std::cout << (*chunk)[0]->verts[i] << " ";
-//	std::cout << std::endl;
-
+	Chunk * chunk = data->game->loadChunk(data->coord[0], data->coord[1]);
 	*data->savePointer = chunk;
-//	std::cout << "end thread" << std::endl;
+	return 0;
+}
+
+DWORD WINAPI chunkMeshThread(LPVOID lpParameter)
+{
+	auto data = (meshThreadData *) lpParameter;
+	data->chunk->generateMesh();
 	return 0;
 }
 
@@ -45,16 +44,32 @@ ChunkProvider::ChunkProvider(Game* game_)
 	game = game_;
 }
 
-void ChunkProvider::update()
+void ChunkProvider::update(int pcx, int pcz)
 {
-	std::sort(requestedChunks.begin(), requestedChunks.end(), [](std::array<int, 3> a, std::array<int, 3> b) -> bool {return a[2]<b[2]; });
+	for(auto & chunkCoord : requestedChunks)
+		chunkCoord[2] = (chunkCoord[0] - pcx)*(chunkCoord[0] - pcx) + (chunkCoord[1] - pcz)*(chunkCoord[1] - pcz);
+
+	std::sort(requestedChunks.begin(), requestedChunks.end(), [](std::array<int, 3> a, std::array<int, 3> b) -> bool{return a[2]<b[2];});
+
+	for(auto & chunkMesh : requestedChunkMeshes)
+		chunkMesh.distance = (chunkMesh.chunk->cx - pcx)*(chunkMesh.chunk->cx - pcx) + (chunkMesh.chunk->cz - pcz)*(chunkMesh.chunk->cz - pcz);
+
+	std::sort(requestedChunkMeshes.begin(), requestedChunkMeshes.end(), [](requestedMesh a, requestedMesh b) -> bool{return a.distance<b.distance;});
+
 	for(int i = 0; i < MAX_THREADS; i++)
 	{
 		if(threads[i].threadRunning && WaitForSingleObject(threads[i].threadHandle, 0) == WAIT_OBJECT_0)
 		{
 			threads[i].threadRunning = false;
 			CloseHandle(threads[i].threadHandle);
-			availableChunks.push_back(**threads[i].returnPointer);
+			availableChunks.push_back(*threads[i].returnPointer);
+		}
+
+		if(meshingThreads[i].threadRunning && WaitForSingleObject(meshingThreads[i].threadHandle, 0) == WAIT_OBJECT_0)
+		{
+			meshingThreads[i].threadRunning = false;
+			CloseHandle(meshingThreads[i].threadHandle);
+			meshedChunks.push_back(meshingThreads[i].meshedChunk);
 		}
 	}
 	for(int i = 0; i < MAX_THREADS; i++)
@@ -65,7 +80,7 @@ void ChunkProvider::update()
 			{
 				threadData * data = new threadData();
 				data->coord = {requestedChunks[0][0], requestedChunks[0][1]};
-				data->savePointer = new (std::array<Chunk *, Chunk::HEIGHT>*);
+				data->savePointer = new (Chunk*);
 				data->game = game;
 
 				threads[i].returnPointer = data->savePointer;
@@ -75,8 +90,27 @@ void ChunkProvider::update()
 				threads[i].threadRunning = true;
 			}
 		}
+
+		if(requestedChunkMeshes.size() > 0)
+		{
+			if(!meshingThreads[i].threadRunning)
+			{
+				meshThreadData * data = new meshThreadData();
+				data->chunk = requestedChunkMeshes[0].chunk;
+
+				meshingThreads[i].meshedChunk = requestedChunkMeshes[0].chunk;
+				requestedChunkMeshes.erase(requestedChunkMeshes.begin());
+
+				meshingThreads[i].threadHandle = (HANDLE) CreateThread(NULL,0,chunkMeshThread, data, 0,NULL);
+				meshingThreads[i].threadRunning = true;
+			}
+		}
 	}
-//	requestedChunks.clear();
+}
+
+std::vector<Chunk*> ChunkProvider::getAvailableMeshes()
+{
+	return meshedChunks;
 }
 
 void ChunkProvider::requestChunk(int cx, int cz, int distance)
@@ -88,5 +122,20 @@ void ChunkProvider::requestChunk(int cx, int cz, int distance)
 	{
 		isChunkRequested[cx][cz] = true;
 		requestedChunks.push_back(std::array<int, 3> {cx, cz, distance});
+	}
+}
+
+void ChunkProvider::requestChunkMesh(Chunk* chunk)
+{
+	if(isChunkMeshingRequested.count(chunk->cx) == 0)
+		isChunkMeshingRequested[chunk->cx] = std::map<int, bool>();
+
+	if(!isChunkMeshingRequested[chunk->cx][chunk->cz])
+	{
+		isChunkMeshingRequested[chunk->cx][chunk->cz] = true;
+		requestedMesh  req = requestedMesh();
+		req.chunk = chunk;
+		req.distance = 0;
+		requestedChunkMeshes.push_back(req);
 	}
 }

@@ -7,17 +7,19 @@
 #include <vector>
 
 #include "Chunk.h"
-#include "MinecraftWorldLoader.h"
-#include "ChunkProvider.h"
-#include "WorldGenerator.h"
-#include "Camera.h"
+
+class Camera;
+class ChunkProvider;
+class MinecraftWorldLoader;
+class Player;
+class WorldGenerator;
 
 class Game
 {
 public:
-	static const int RENDER_DISTANCE = 3 ;
+	static const int RENDER_DISTANCE = 8;
 
-	std::map<int, std::map<int, std::map<int, Chunk*>>> chunks = {};
+	std::map<int, std::map<int, Chunk*>> chunks = {};
 	std::vector<Chunk*> renderQueue = {};
 	std::vector<glm::vec3> updateQueue;
 	std::string worldFolder;
@@ -28,8 +30,9 @@ public:
 	MinecraftWorldLoader * wLoader;
 	ChunkProvider * chunkProvider;
 	int gametick = 0;
+	int loadedChunks = 0;
 
-	Chunk * invalidChunk = new Chunk();
+	Chunk * invalidChunk;
 	char invalidBlock = -1;
 
 	Game(Camera *, std::string worldFolder = "");
@@ -37,15 +40,16 @@ public:
 	void update(float dt);
 	void tick();
 
-	std::array<Chunk *, Chunk::HEIGHT>* loadChunk(int cx, int cz);
+	Chunk * loadChunk(int cx, int cz);
 	glm::vec3 toChunkCoords(int x, int y, int z);
 	void loadChunks();
-	bool isChunkLoaded(int cx, int cy, int cz);
+	void unloadChunks();
+	bool isChunkLoaded(int cx, int cz);
 	void updateRenderQueue();
 	char getBlock(int x, int y, int z);
 	void setBlock(int x, int y, int z, int id);
 	void placeBlock(int x, int y, int z, int id);
-	Chunk * getChunk(int cx, int cy, int cz);
+	Chunk * getChunk(int cx, int cz);
 };
 
 #endif

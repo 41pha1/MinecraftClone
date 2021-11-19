@@ -8,6 +8,7 @@ BlockPalette::BlockPalette(int size_)
 	size = size_;
 	size2 = size*size;
 	bitsPerIndex = 0;
+	set(0,0,0,0);
 }
 
 int BlockPalette::get(int x, int y, int z)
